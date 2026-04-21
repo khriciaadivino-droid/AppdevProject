@@ -6,12 +6,12 @@ import MainNav from './MainNav';
 
 export default () => {
     const { data } = useSelector(state => state.auth);
-    
+
     let isLoggedIn = !!data;
-    
+
     console.log('🟢 Navigation - isLoggedIn:', isLoggedIn);
     console.log('🟢 Navigation - auth data:', data);
-    
+
     return (
         <NavigationContainer key={isLoggedIn ? 'logged-in' : 'logged-out'}>
             {isLoggedIn ? <MainNav /> : <AuthNav />}

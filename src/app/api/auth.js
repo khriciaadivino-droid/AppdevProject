@@ -1,69 +1,117 @@
+import { NativeModules } from 'react-native';
 
-const BASE_URL = 'http://localhost:8000/api'; 
+const DEV_API_PORTS = ['9000', '8000'];
+
+const getDevServerHost = () => {
+  const scriptURL = NativeModules?.SourceCode?.scriptURL;
+  if (!scriptURL) {
+    return null;
+  }
+
+  const hostMatch = scriptURL.match(/^https?:\/\/([^/:]+)(?::\d+)?/i);
+  return hostMatch?.[1] || null;
+};
+
+const buildBaseUrls = () => {
+  if (!__DEV__) {
+    return ['http://localhost:8000/api'];
+  }
+
+  const devHost = getDevServerHost();
+  const hosts = [];
+
+  if (devHost) {
+    hosts.push(devHost);
+  }
+
+  hosts.push('10.0.2.2', 'localhost', '127.0.0.1');
+
+  const urls = [];
+  for (const host of hosts) {
+    for (const port of DEV_API_PORTS) {
+      const url = `http://${host}:${port}/api`;
+      if (!urls.includes(url)) {
+        urls.push(url);
+      }
+    }
+  }
+
+  return urls;
+};
+
+const BASE_URLS = buildBaseUrls();
+
+const fetchWithBaseUrlFallback = async (paths, options) => {
+  const requestPaths = Array.isArray(paths) ? paths : [paths];
+  let lastError = null;
+
+  for (const path of requestPaths) {
+    for (const baseUrl of BASE_URLS) {
+      try {
+        const response = await fetch(`${baseUrl}${path}`, options);
+
+        if (response.status === 404) {
+          continue;
+        }
+
+        return response;
+      } catch (error) {
+        lastError = error;
+      }
+    }
+  }
+
+  throw lastError || new Error('Network request failed. API server is unreachable.');
+};
 
 const getHeaders = (token = null) => {
   const headers = {
     Accept: 'application/json',
     'Content-Type': 'application/json',
   };
-  
+
   if (token) {
     headers.Authorization = `Bearer ${token}`;
   }
-  
+
   return headers;
 };
 
+
 export async function authLogin({ email, password }) {
   try {
-    console.log('🟢 API Call - URL:', `${BASE_URL}/login`);
-    console.log('🟢 API Call - Email:', email);
-    
-    const response = await fetch(`${BASE_URL}/login`, {
+    const response = await fetchWithBaseUrlFallback(['/auth/login', '/login'], {
       method: 'POST',
       headers: getHeaders(),
       body: JSON.stringify({ email, password }),
     });
 
-    console.log('🟢 API Response - Status:', response.status);
-    console.log('🟢 API Response - OK:', response.ok);
-
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      console.log('🔴 API Error Data:', errorData);
-      
-      if (response.status === 401 || response.status === 404) {
-        throw new Error('Account not found or invalid credentials. Please check your email and password.');
-      }
-      
-      if (response.status === 422) {
-        throw new Error(errorData.message || 'Invalid email or password format.');
-      }
-      
       throw new Error(errorData.message || `Login failed: ${response.status}`);
     }
 
     const data = await response.json();
-    console.log('🟢 API Success - Data:', data);
-    
-   
+
+    // Expected response format: { user: {...}, token: '...' }
+    // Adjust based on your actual API response structure
     return {
       id: data.user?.id || data.id,
       email: data.user?.email || data.email,
       name: data.user?.name || data.name,
       token: data.token,
       loginTime: new Date().toISOString(),
-      ...data.user, 
+      ...data.user, // Include any additional user fields
     };
   } catch (error) {
-    console.error('🔴 Login API Error:', error);
+    console.error('Login error:', error);
     throw error;
   }
 }
 
 export async function authRegister({ email, password, name }) {
   try {
-    const response = await fetch(`${BASE_URL}/auth/register`, {
+    const response = await fetchWithBaseUrlFallback('/auth/register', {
       method: 'POST',
       headers: getHeaders(),
       body: JSON.stringify({ email, password, name }),
@@ -75,7 +123,7 @@ export async function authRegister({ email, password, name }) {
     }
 
     const data = await response.json();
-    
+
     return {
       id: data.user?.id || data.id,
       email: data.user?.email || data.email,
@@ -104,7 +152,7 @@ export async function authLogout(token) {
     return { success: true };
   } catch (error) {
     console.error('Logout error:', error);
-   
+    // Still return success for local logout even if API call fails
     return { success: true };
   }
 }

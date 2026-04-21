@@ -3,24 +3,16 @@ import { IMG } from '../utils';
 import { useDispatch, useSelector } from 'react-redux';
 import { resetLogin } from '../app/reducers/auth';
 import { useNavigation } from '@react-navigation/native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+
 
 const ProfileScreen = () => {
   const dispatch = useDispatch();
   const { data: user } = useSelector(state => state.auth);
   const navigation = useNavigation();
 
-  const handleLogout = async () => {
-    try {
-      // Clear all persisted data
-      await AsyncStorage.multiRemove(['persist:root', 'persist:auth']);
-      // Reset Redux state - this will trigger navigation change
-      dispatch(resetLogin());
-    } catch (error) {
-      console.error('Logout error:', error);
-      // Still dispatch reset even if AsyncStorage fails
-      dispatch(resetLogin());
-    }
+  const handleLogout = () => {
+    // Reset Redux state - this will trigger navigation change
+    dispatch(resetLogin());
   };
 
   return (

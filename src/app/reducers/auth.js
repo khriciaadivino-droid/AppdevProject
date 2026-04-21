@@ -7,16 +7,16 @@ import {
 } from '../actions';
 import { PURGE } from 'redux-persist';
 
-const INITIAL_STATE = { //storage or initialization sa data
-  data: null, // null kay wala initializa ang data 
+const INITIAL_STATE = { 
+  data: null, 
   isLoading: false,
   isError: false,
   errorMessage: null,
 };
 
 export default function reducer(state = INITIAL_STATE, action) {
-  console.log('🔵 Auth Reducer - Action:', action.type);
-  console.log('🔵 Auth Reducer - Current state:', state);
+  console.log('Auth Reducer - Action:', action.type);
+  console.log('Auth Reducer - Current state:', state);
   switch (action.type) {
     case USER_LOGIN_REQUEST:
       return {
