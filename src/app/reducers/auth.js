@@ -7,8 +7,8 @@ import {
 } from '../actions';
 import { PURGE } from 'redux-persist';
 
-const INITIAL_STATE = { 
-  data: null, 
+const INITIAL_STATE = {
+  data: null,
   isLoading: false,
   isError: false,
   errorMessage: null,
@@ -21,7 +21,7 @@ export default function reducer(state = INITIAL_STATE, action) {
     case USER_LOGIN_REQUEST:
       return {
         ...state,
-        data: null, 
+        data: null,
         isLoading: true,
         isError: false,
         errorMessage: null,
@@ -55,6 +55,11 @@ export default function reducer(state = INITIAL_STATE, action) {
 
 export const userLogin = payload => ({
   type: USER_LOGIN,
+  payload,
+});
+
+export const userLoginCompleted = payload => ({
+  type: USER_LOGIN_COMPLETED,
   payload,
 });
 

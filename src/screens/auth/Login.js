@@ -1,13 +1,17 @@
 import { useState, useEffect } from 'react';
 import { Alert, StyleSheet, Text, View, KeyboardAvoidingView, Platform, ScrollView, TouchableOpacity, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
+import auth from '@react-native-firebase/auth';
 
 import CustomButton from '../../components/CustomButton';
 import CustomTextInput from '../../components/CustomTextInput';
 import { useDispatch, useSelector } from 'react-redux';
-import { userLogin, resetLogin } from '../../app/reducers/auth';
+import { userLogin, resetLogin, userLoginCompleted } from '../../app/reducers/auth';
 import { SCREENS } from '../../utils/routes';
 import IMAGES from '../../utils/image';
+
+const GOOGLE_WEB_CLIENT_ID = 'REPLACE_WITH_GOOGLE_WEB_CLIENT_ID.apps.googleusercontent.com';
 
 const Login = () => {
   const navigation = useNavigation();
@@ -23,17 +27,28 @@ const Login = () => {
   useEffect(() => {
     console.log('🟡 Login screen mounted - resetting login state');
     dispatch(resetLogin());
-  }, []);
+
+    if (GOOGLE_WEB_CLIENT_ID.startsWith('REPLACE_WITH')) {
+      console.warn('Google Sign-In web client id is not configured.');
+      return;
+    }
+
+    GoogleSignin.configure({
+      webClientId: GOOGLE_WEB_CLIENT_ID,
+      offlineAccess: false,
+      forceCodeForRefreshToken: false,
+    });
+  }, [dispatch]);
 
   // Handle error state
   useEffect(() => {
     if (isError) {
       const errorMsg = errorMessage || 'Login failed. Please check your credentials.';
-      
+
       // Check if it's an account not found error
-      if (errorMsg.toLowerCase().includes('not found') || 
-          errorMsg.toLowerCase().includes('invalid') ||
-          errorMsg.toLowerCase().includes('401')) {
+      if (errorMsg.toLowerCase().includes('not found') ||
+        errorMsg.toLowerCase().includes('invalid') ||
+        errorMsg.toLowerCase().includes('401')) {
         Alert.alert(
           'Account Not Found',
           'This account is not registered. Please register first or check your email and password.',
@@ -50,7 +65,7 @@ const Login = () => {
         );
       }
     }
-  }, [isError, errorMessage]);
+  }, [dispatch, errorMessage, isError, navigation]);
 
   const validateEmail = (email) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -61,7 +76,7 @@ const Login = () => {
     console.log('🟢 Login button clicked!');
     console.log('🟢 Current loading state:', isLoading);
     console.log('🟢 Email:', emailAdd, 'Password:', password);
-    
+
     const newErrors = {};
 
     // Validate email
@@ -97,20 +112,83 @@ const Login = () => {
     console.log('🟢 Login action dispatched!');
   };
 
+  const handleGoogleLogin = async () => {
+    if (isLoading) {
+      return;
+    }
+
+    if (GOOGLE_WEB_CLIENT_ID.startsWith('REPLACE_WITH')) {
+      Alert.alert(
+        'Google Sign-In Setup Needed',
+        'Set your Google web client ID in Login.js before using Google Sign-In.'
+      );
+      return;
+    }
+
+    try {
+      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      const userInfo = await GoogleSignin.signIn();
+
+      const idToken = userInfo?.data?.idToken || userInfo?.idToken;
+
+      if (!idToken) {
+        throw new Error('Google Sign-In did not return a token.');
+      }
+
+      const googleCredential = auth.GoogleAuthProvider.credential(idToken);
+      const firebaseAuthResult = await auth().signInWithCredential(googleCredential);
+      const firebaseUser = firebaseAuthResult?.user;
+
+      if (!firebaseUser?.uid || !firebaseUser?.email) {
+        throw new Error('Firebase Auth did not return a valid user profile.');
+      }
+
+      const firebaseToken = await firebaseUser.getIdToken();
+
+      dispatch(
+        userLoginCompleted({
+          id: firebaseUser.uid,
+          email: firebaseUser.email,
+          name: firebaseUser.displayName || firebaseUser.email,
+          token: firebaseToken,
+          loginTime: new Date().toISOString(),
+          authProvider: 'google',
+          photoURL: firebaseUser.photoURL,
+        })
+      );
+    } catch (error) {
+      if (error?.code === statusCodes.SIGN_IN_CANCELLED) {
+        return;
+      }
+
+      if (error?.code === statusCodes.IN_PROGRESS) {
+        Alert.alert('Google Sign-In', 'A sign-in request is already in progress.');
+        return;
+      }
+
+      if (error?.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+        Alert.alert('Google Play Services', 'Google Play Services is not available on this device.');
+        return;
+      }
+
+      Alert.alert('Google Sign-In Failed', error?.message || 'Unable to sign in with Google.');
+    }
+  };
+
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <ScrollView 
+      <ScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.formContainer}>
           {/* Logo */}
           <View style={styles.logoContainer}>
-            <Image 
-              source={IMAGES.LOGO} 
+            <Image
+              source={IMAGES.LOGO}
               style={styles.logoImage}
               resizeMode="contain"
             />
@@ -152,7 +230,7 @@ const Login = () => {
             {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
           </View>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.rememberMeContainer}
             onPress={() => setRememberMe(!rememberMe)}
             activeOpacity={0.7}
@@ -163,12 +241,22 @@ const Login = () => {
             <Text style={styles.rememberMeText}>Remember me</Text>
           </TouchableOpacity>
 
-          <CustomButton 
-            label={'Sign In'} 
+          <CustomButton
+            label={'Sign In'}
             onPress={handleLogin}
             buttonStyle={styles.loginButton}
             loading={isLoading}
           />
+
+          <TouchableOpacity
+            style={styles.googleButton}
+            onPress={handleGoogleLogin}
+            activeOpacity={0.85}
+            disabled={isLoading}
+          >
+            <Text style={styles.googleIcon}>G</Text>
+            <Text style={styles.googleButtonText}>Sign in with Google</Text>
+          </TouchableOpacity>
 
           <View style={styles.registerContainer}>
             <Text style={styles.registerText}>Don't have an account? </Text>
@@ -285,8 +373,32 @@ const styles = StyleSheet.create({
   },
   loginButton: {
     marginTop: 5,
-    marginBottom: 20,
+    marginBottom: 12,
     width: '100%',
+  },
+  googleButton: {
+    width: '100%',
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderRadius: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    backgroundColor: '#fff',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  googleIcon: {
+    color: '#ea4335',
+    fontSize: 18,
+    fontWeight: '700',
+    marginRight: 10,
+  },
+  googleButtonText: {
+    color: '#111827',
+    fontSize: 15,
+    fontWeight: '600',
   },
   registerContainer: {
     flexDirection: 'row',
