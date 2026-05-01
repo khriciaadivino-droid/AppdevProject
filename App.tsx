@@ -8,6 +8,7 @@ import React from 'react';
 import { StatusBar, useColorScheme } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import firebase from '@react-native-firebase/app';
 import Navigation from './src/navigations/Index';
 
 import { Provider } from 'react-redux';
@@ -22,6 +23,7 @@ export { persistor };
 
 function App() {
   const isDarkMode = useColorScheme() === 'dark';
+  console.log('Firebase app initialized:', firebase.app().name);
 
   return (
     <Provider store={store}>

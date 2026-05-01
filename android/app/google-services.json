@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "189109871383",
+    "project_id": "divino-db341",
+    "storage_bucket": "divino-db341.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:189109871383:android:2179939f7bf8b55b1d8d52",
+        "android_client_info": {
+          "package_name": "Divino.com"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAF1eKW8lFTfKBIU415quQooD23bJB-Y8o"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
