@@ -138,6 +138,39 @@ export async function authRegister({ email, password, name }) {
   }
 }
 
+/**
+ * Fetches Google account profile details using an ID token.
+ * @param {{ token: string }} payload
+ * @returns {Promise<Record<string, any> & { error?: string }>}
+ */
+export async function userGoogleLogin(payload) {
+  const { token } = payload || {};
+
+  if (!token) {
+    return { error: 'Google token is required' };
+  }
+
+  try {
+    const response = await fetch('https://www.googleapis.com/userinfo/v2/me', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      const errorMessage =
+        data?.error?.message ||
+        data?.message ||
+        `Google login failed: ${response.status}`;
+      return { error: errorMessage };
+    }
+
+    return data;
+  } catch (error) {
+    return { error: error?.message || 'An unknown error occurred' };
+  }
+}
+
 export async function authLogout(token) {
   try {
     const response = await fetch(`${BASE_URL}/auth/logout`, {
