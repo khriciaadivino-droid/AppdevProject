@@ -4,6 +4,7 @@ import { useNavigation } from '@react-navigation/native';
 
 import CustomButton from '../../components/CustomButton';
 import CustomTextInput from '../../components/CustomTextInput';
+import { authRegister } from '../../app/api/auth';
 import { SCREENS } from '../../utils/routes';
 import IMAGES from '../../utils/image';
 
@@ -21,7 +22,7 @@ const Register = () => {
     return emailRegex.test(email);
   };
 
-  const handleRegister = () => {
+  const handleRegister = async () => {
     const newErrors = {};
 
     // Validate full name
@@ -60,12 +61,16 @@ const Register = () => {
     setErrors({});
     setIsLoading(true);
 
-    // Simulate registration API call
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      await authRegister({
+        name: fullName.trim(),
+        email: emailAdd.trim(),
+        password: password,
+      });
+
       Alert.alert(
         'Registration Successful',
-        'Your account has been created successfully!',
+        'Your account has been created successfully. Please sign in.',
         [
           {
             text: 'OK',
@@ -73,27 +78,33 @@ const Register = () => {
           },
         ]
       );
-    }, 1500);
+    } catch (error) {
+      const message = error?.message || 'Registration failed. Please try again.';
+      Alert.alert('Registration Failed', message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <ScrollView 
+      <ScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.formContainer}>
-          {/* Logo */}
-          <View style={styles.logoContainer}>
-            <Image 
-              source={IMAGES.LOGO} 
-              style={styles.logoImage}
-              resizeMode="contain"
-            />
-          </View>
+          {IMAGES.LOGO && (
+            <View style={styles.logoContainer}>
+              <Image
+                source={IMAGES.LOGO}
+                style={styles.logoImage}
+                resizeMode="contain"
+              />
+            </View>
+          )}
 
           <Text style={styles.title}>Create Account</Text>
           <Text style={styles.subtitle}>Join PawStuff today!</Text>
@@ -164,8 +175,8 @@ const Register = () => {
             {errors.confirmPassword && <Text style={styles.errorText}>{errors.confirmPassword}</Text>}
           </View>
 
-          <CustomButton 
-            label={'Create Account'} 
+          <CustomButton
+            label={'Create Account'}
             onPress={handleRegister}
             buttonStyle={styles.registerButton}
             loading={isLoading}

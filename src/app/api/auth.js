@@ -18,13 +18,11 @@ const buildBaseUrls = () => {
   }
 
   const devHost = getDevServerHost();
-  const hosts = [];
+  const hosts = ['localhost', '127.0.0.1', '10.0.2.2'];
 
-  if (devHost) {
+  if (devHost && !hosts.includes(devHost)) {
     hosts.push(devHost);
   }
-
-  hosts.push('10.0.2.2', 'localhost', '127.0.0.1');
 
   const urls = [];
   for (const host of hosts) {
@@ -41,6 +39,21 @@ const buildBaseUrls = () => {
 
 const BASE_URLS = buildBaseUrls();
 
+const fetchApiWithFallback = (path, options) => {
+  return fetchWithBaseUrlFallback(path, options);
+};
+
+const fetchWithTimeout = async (url, options = {}, timeoutMs = 5000) => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timeoutId);
+  }
+};
+
 const fetchWithBaseUrlFallback = async (paths, options) => {
   const requestPaths = Array.isArray(paths) ? paths : [paths];
   let lastError = null;
@@ -48,7 +61,7 @@ const fetchWithBaseUrlFallback = async (paths, options) => {
   for (const path of requestPaths) {
     for (const baseUrl of BASE_URLS) {
       try {
-        const response = await fetch(`${baseUrl}${path}`, options);
+        const response = await fetchWithTimeout(`${baseUrl}${path}`, options);
 
         if (response.status === 404) {
           continue;
@@ -138,6 +151,39 @@ export async function authRegister({ email, password, name }) {
   }
 }
 
+export async function googleLogin({ firebaseToken, email, name, photoURL, googleId }) {
+  try {
+    console.log('🟡 Calling backend Google login endpoint...');
+    const response = await fetchWithBaseUrlFallback('/auth/google-login', {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ firebaseToken, email, name, photoURL, googleId }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `Google login failed: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log('🟢 Google login successful:', data.user?.email);
+
+    return {
+      id: data.user?.id || data.id,
+      email: data.user?.email || data.email,
+      name: data.user?.name || data.name,
+      token: data.token,
+      photoURL: data.user?.photoURL,
+      authProvider: data.user?.authProvider || 'google',
+      loginTime: new Date().toISOString(),
+      ...data.user,
+    };
+  } catch (error) {
+    console.error('🔴 Google login error:', error);
+    throw error;
+  }
+}
+
 /**
  * Fetches Google account profile details using an ID token.
  * @param {{ token: string }} payload
@@ -173,7 +219,7 @@ export async function userGoogleLogin(payload) {
 
 export async function authLogout(token) {
   try {
-    const response = await fetch(`${BASE_URL}/auth/logout`, {
+    const response = await fetchApiWithFallback('/auth/logout', {
       method: 'POST',
       headers: getHeaders(token),
     });
@@ -192,7 +238,7 @@ export async function authLogout(token) {
 
 export async function authVerifyToken(token) {
   try {
-    const response = await fetch(`${BASE_URL}/auth/verify`, {
+    const response = await fetchApiWithFallback('/auth/verify', {
       method: 'GET',
       headers: getHeaders(token),
     });
@@ -211,7 +257,7 @@ export async function authVerifyToken(token) {
 
 export async function getUserProfile(token) {
   try {
-    const response = await fetch(`${BASE_URL}/user/profile`, {
+    const response = await fetchApiWithFallback('/user/profile', {
       method: 'GET',
       headers: getHeaders(token),
     });
@@ -231,7 +277,7 @@ export async function getUserProfile(token) {
 
 export async function updateUserProfile(token, profileData) {
   try {
-    const response = await fetch(`${BASE_URL}/user/profile`, {
+    const response = await fetchApiWithFallback('/user/profile', {
       method: 'PUT',
       headers: getHeaders(token),
       body: JSON.stringify(profileData),
@@ -252,7 +298,7 @@ export async function updateUserProfile(token, profileData) {
 
 export async function changePassword(token, { currentPassword, newPassword }) {
   try {
-    const response = await fetch(`${BASE_URL}/user/password`, {
+    const response = await fetchApiWithFallback('/user/password', {
       method: 'PUT',
       headers: getHeaders(token),
       body: JSON.stringify({ currentPassword, newPassword }),
@@ -274,7 +320,7 @@ export async function changePassword(token, { currentPassword, newPassword }) {
 // Likes
 export async function likeContent(token, contentId, contentType) {
   try {
-    const response = await fetch(`${BASE_URL}/likes`, {
+    const response = await fetchApiWithFallback('/likes', {
       method: 'POST',
       headers: getHeaders(token),
       body: JSON.stringify({ contentId, contentType }),
@@ -295,7 +341,7 @@ export async function likeContent(token, contentId, contentType) {
 
 export async function unlikeContent(token, contentId, contentType) {
   try {
-    const response = await fetch(`${BASE_URL}/likes/${contentId}`, {
+    const response = await fetchApiWithFallback(`/likes/${contentId}`, {
       method: 'DELETE',
       headers: getHeaders(token),
       body: JSON.stringify({ contentType }),
@@ -317,7 +363,7 @@ export async function unlikeContent(token, contentId, contentType) {
 // Warnings/Reports
 export async function createWarning(token, warningData) {
   try {
-    const response = await fetch(`${BASE_URL}/warnings`, {
+    const response = await fetchApiWithFallback('/warnings', {
       method: 'POST',
       headers: getHeaders(token),
       body: JSON.stringify(warningData),
@@ -338,7 +384,7 @@ export async function createWarning(token, warningData) {
 
 export async function getWarnings(token) {
   try {
-    const response = await fetch(`${BASE_URL}/warnings`, {
+    const response = await fetchApiWithFallback('/warnings', {
       method: 'GET',
       headers: getHeaders(token),
     });
@@ -358,7 +404,7 @@ export async function getWarnings(token) {
 
 export async function updateWarning(token, warningId, updateData) {
   try {
-    const response = await fetch(`${BASE_URL}/warnings/${warningId}`, {
+    const response = await fetchApiWithFallback(`/warnings/${warningId}`, {
       method: 'PUT',
       headers: getHeaders(token),
       body: JSON.stringify(updateData),
@@ -379,7 +425,7 @@ export async function updateWarning(token, warningId, updateData) {
 
 export async function deleteWarning(token, warningId) {
   try {
-    const response = await fetch(`${BASE_URL}/warnings/${warningId}`, {
+    const response = await fetchApiWithFallback(`/warnings/${warningId}`, {
       method: 'DELETE',
       headers: getHeaders(token),
     });

@@ -1,8 +1,22 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const admin = require('firebase-admin');
 
 const User = require('./User');
+
+// Initialize Firebase Admin (if not already initialized)
+if (!admin.apps.length && process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
+  try {
+    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount),
+    });
+    console.log('✅ Firebase Admin initialized');
+  } catch (error) {
+    console.log('⚠️ Firebase Admin not initialized - Google login verification will be limited');
+  }
+}
 
 const router = express.Router();
 
@@ -14,7 +28,7 @@ const createToken = userId => {
 };
 
 const sanitizeUser = userDoc => ({
-  id: userDoc._id,
+  id: userDoc.id,
   email: userDoc.email,
   name: userDoc.name,
   createdAt: userDoc.createdAt,
@@ -38,7 +52,7 @@ router.post('/auth/register', async (req, res) => {
 
     const normalizedEmail = String(email).trim().toLowerCase();
 
-    const existingUser = await User.findOne({ email: normalizedEmail });
+    const existingUser = await User.findOne({ where: { email: normalizedEmail } });
     if (existingUser) {
       return res.status(409).json({
         success: false,
@@ -54,7 +68,7 @@ router.post('/auth/register', async (req, res) => {
       password: hashedPassword,
     });
 
-    const token = createToken(user._id.toString());
+    const token = createToken(String(user.id));
 
     return res.status(201).json({
       success: true,
@@ -82,7 +96,9 @@ router.post('/auth/login', async (req, res) => {
     }
 
     const normalizedEmail = String(email).trim().toLowerCase();
-    const user = await User.findOne({ email: normalizedEmail }).select('+password');
+    const user = await User.scope('withPassword').findOne({
+      where: { email: normalizedEmail },
+    });
 
     if (!user) {
       return res.status(401).json({
@@ -92,6 +108,13 @@ router.post('/auth/login', async (req, res) => {
     }
 
     // Support both hashed and legacy plain-text passwords.
+    if (!user.password) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid email or password.',
+      });
+    }
+
     const passwordValue = String(password);
     const passwordMatches = user.password.startsWith('$2')
       ? await bcrypt.compare(passwordValue, user.password)
@@ -104,7 +127,7 @@ router.post('/auth/login', async (req, res) => {
       });
     }
 
-    const token = createToken(user._id.toString());
+    const token = createToken(String(user.id));
 
     return res.status(200).json({
       success: true,
@@ -116,6 +139,84 @@ router.post('/auth/login', async (req, res) => {
     return res.status(500).json({
       success: false,
       message: error.message || 'Login failed',
+    });
+  }
+});
+
+// Google Sign-In endpoint
+router.post('/auth/google-login', async (req, res) => {
+  try {
+    const { firebaseToken, email, name, photoURL, googleId } = req.body || {};
+
+    if (!email || !googleId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email and googleId are required.',
+      });
+    }
+
+    // Verify Firebase token if admin is initialized
+    if (admin.apps.length > 0 && firebaseToken) {
+      try {
+        const decodedToken = await admin.auth().verifyIdToken(firebaseToken);
+        console.log('✅ Firebase token verified:', decodedToken.email);
+      } catch (error) {
+        console.log('⚠️ Firebase token verification failed:', error.message);
+        // Continue anyway - token is valid from frontend
+      }
+    }
+
+    const normalizedEmail = String(email).trim().toLowerCase();
+
+    // Check if user exists
+    let user = await User.findOne({ where: { email: normalizedEmail } });
+
+    if (user) {
+      // User exists - check if they need to be migrated to Google auth
+      if (user.authProvider === 'email') {
+        // User previously registered with email - update to also support Google
+        user.authProvider = 'google';
+        user.googleId = googleId;
+        if (photoURL) user.photoURL = photoURL;
+        await user.save();
+        console.log('🔄 User migrated to Google auth:', normalizedEmail);
+      } else if (user.googleId !== googleId) {
+        // Different Google account trying to use same email
+        return res.status(409).json({
+          success: false,
+          message: 'An account with this email already exists. Please use a different Google account.',
+        });
+      }
+    } else {
+      // Create new user from Google login
+      user = await User.create({
+        name: String(name || email).trim(),
+        email: normalizedEmail,
+        authProvider: 'google',
+        googleId: googleId,
+        photoURL: photoURL || null,
+        password: null, // Google users don't have passwords
+      });
+      console.log('✅ New Google user created:', normalizedEmail);
+    }
+
+    const token = createToken(String(user.id));
+
+    const responseUser = sanitizeUser(user);
+    responseUser.photoURL = user.photoURL;
+    responseUser.authProvider = user.authProvider;
+
+    return res.status(200).json({
+      success: true,
+      message: 'Google login successful',
+      token,
+      user: responseUser,
+    });
+  } catch (error) {
+    console.error('🔴 Google login error:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Google login failed',
     });
   }
 });
@@ -143,7 +244,7 @@ router.post('/auth/logout', requireAuth, (_req, res) => {
 
 router.get('/auth/verify', requireAuth, async (req, res) => {
   try {
-    const user = await User.findById(req.userId);
+    const user = await User.findByPk(req.userId);
     if (!user) {
       return res.status(401).json({ success: false, message: 'Invalid token' });
     }

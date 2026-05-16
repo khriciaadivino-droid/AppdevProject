@@ -30,7 +30,7 @@ const ProfileScreen = () => {
       <View style={styles.content}>
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Account Information</Text>
-          
+
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Full Name</Text>
             <Text style={styles.infoValue}>{user?.name || 'N/A'}</Text>
@@ -44,8 +44,8 @@ const ProfileScreen = () => {
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Login Time</Text>
             <Text style={styles.infoValue}>
-              {user?.loginTime 
-                ? new Date(user.loginTime).toLocaleString() 
+              {user?.loginTime
+                ? new Date(user.loginTime).toLocaleString()
                 : 'N/A'}
             </Text>
           </View>
@@ -58,15 +58,15 @@ const ProfileScreen = () => {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Actions</Text>
-          
-          <TouchableOpacity 
+
+          <TouchableOpacity
             style={styles.actionButton}
             onPress={() => navigation.goBack()}
           >
             <Text style={styles.actionButtonText}>Back to Dashboard</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.actionButton, styles.logoutButton]}
             onPress={handleLogout}
           >
@@ -86,114 +86,118 @@ const ProfileScreen = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f0f2f5',
-  },
-  header: {
-    backgroundColor: '#4169E1',
+{
+  IMG.LOGO && (
+    <Image
+      source={IMG.LOGO}
+      style={styles.logo}
+      resizeMode="contain"
+    />
+  )
+}
+header: {
+  backgroundColor: '#4169E1',
     padding: 30,
-    alignItems: 'center',
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
+      alignItems: 'center',
+        borderBottomLeftRadius: 30,
+          borderBottomRightRadius: 30,
+            shadowColor: '#000',
+              shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.2,
     shadowRadius: 8,
-    elevation: 5,
+      elevation: 5,
   },
-  avatarContainer: {
-    width: 100,
+avatarContainer: {
+  width: 100,
     height: 100,
-    borderRadius: 50,
-    backgroundColor: 'white',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 15,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
+      borderRadius: 50,
+        backgroundColor: 'white',
+          justifyContent: 'center',
+            alignItems: 'center',
+              marginBottom: 15,
+                shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.2,
     shadowRadius: 4,
-    elevation: 3,
+      elevation: 3,
   },
-  avatarText: {
-    fontSize: 42,
+avatarText: {
+  fontSize: 42,
     fontWeight: 'bold',
-    color: '#4169E1',
+      color: '#4169E1',
   },
-  name: {
-    fontSize: 26,
+name: {
+  fontSize: 26,
     fontWeight: 'bold',
-    color: 'white',
-    marginBottom: 5,
+      color: 'white',
+        marginBottom: 5,
   },
-  email: {
-    fontSize: 16,
+email: {
+  fontSize: 16,
     color: 'rgba(255,255,255,0.9)',
   },
-  content: {
-    padding: 20,
+content: {
+  padding: 20,
   },
-  section: {
-    backgroundColor: 'white',
+section: {
+  backgroundColor: 'white',
     borderRadius: 15,
-    padding: 20,
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
+      padding: 20,
+        marginBottom: 20,
+          shadowColor: '#000',
+            shadowOffset: { width: 0, height: 1 },
+  shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 2,
+      elevation: 2,
   },
-  sectionTitle: {
-    fontSize: 20,
+sectionTitle: {
+  fontSize: 20,
     fontWeight: 'bold',
-    color: '#1a1a1a',
-    marginBottom: 15,
+      color: '#1a1a1a',
+        marginBottom: 15,
   },
-  infoRow: {
-    paddingVertical: 12,
+infoRow: {
+  paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+      borderBottomColor: '#f0f0f0',
   },
-  infoLabel: {
-    fontSize: 14,
+infoLabel: {
+  fontSize: 14,
     color: '#666',
-    marginBottom: 4,
+      marginBottom: 4,
   },
-  infoValue: {
-    fontSize: 16,
+infoValue: {
+  fontSize: 16,
     color: '#1a1a1a',
-    fontWeight: '500',
+      fontWeight: '500',
   },
-  actionButton: {
-    backgroundColor: '#4169E1',
+actionButton: {
+  backgroundColor: '#4169E1',
     padding: 15,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginTop: 10,
+      borderRadius: 10,
+        alignItems: 'center',
+          marginTop: 10,
   },
-  actionButtonText: {
-    color: 'white',
+actionButtonText: {
+  color: 'white',
     fontSize: 16,
-    fontWeight: '600',
+      fontWeight: '600',
   },
-  logoutButton: {
-    backgroundColor: '#ff3b30',
+logoutButton: {
+  backgroundColor: '#ff3b30',
   },
-  logoutButtonText: {
-    color: 'white',
+logoutButtonText: {
+  color: 'white',
   },
-  logoContainer: {
-    alignItems: 'center',
+logoContainer: {
+  alignItems: 'center',
     marginTop: 20,
-    marginBottom: 30,
+      marginBottom: 30,
   },
-  logo: {
-    width: 150,
+logo: {
+  width: 150,
     height: 150,
-    opacity: 0.3,
+      opacity: 0.3,
   },
 });
 

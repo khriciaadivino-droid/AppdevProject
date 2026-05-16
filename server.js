@@ -1,6 +1,7 @@
 const express = require('express');
-const mongoose = require('mongoose');
 require('dotenv').config();
+
+const sequelize = require('./db');
 
 const app = express();
 
@@ -14,14 +15,24 @@ app.use((req, res, next) => {
   next();
 });
 
-mongoose.connect(process.env.MONGODB_URI)
-  .then(() => console.log('MongoDB connected'))
-  .catch(err => console.error('MongoDB connection error:', err));
-
 const authRoutes = require('./authRoutes');
 app.use('/api', authRoutes);
 
 const PORT = process.env.PORT || 8000;
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-});
+
+const startServer = async () => {
+  try {
+    await sequelize.authenticate();
+    await sequelize.sync();
+    console.log('MySQL connected');
+
+    app.listen(PORT, () => {
+      console.log(`Server running on http://localhost:${PORT}`);
+    });
+  } catch (error) {
+    console.error('MySQL connection error:', error);
+    process.exit(1);
+  }
+};
+
+startServer();

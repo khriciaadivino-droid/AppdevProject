@@ -1,50 +1,58 @@
-// User Model Example (Mongoose/MongoDB)
-// Create this file in your models directory
+const { DataTypes } = require('sequelize');
+const sequelize = require('./db');
 
-const mongoose = require('mongoose');
-
-const userSchema = new mongoose.Schema({
-  name: {
-    type: String,
-    required: [true, 'Please provide a name'],
-    trim: true,
-    maxlength: [50, 'Name cannot be more than 50 characters']
+const User = sequelize.define(
+  'User',
+  {
+    id: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    name: {
+      type: DataTypes.STRING(50),
+      allowNull: false,
+    },
+    email: {
+      type: DataTypes.STRING(255),
+      allowNull: false,
+      unique: true,
+      validate: {
+        isEmail: true,
+      },
+    },
+    password: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+    },
+    authProvider: {
+      type: DataTypes.ENUM('email', 'google'),
+      allowNull: false,
+      defaultValue: 'email',
+    },
+    googleId: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      unique: true,
+    },
+    photoURL: {
+      type: DataTypes.STRING(2048),
+      allowNull: true,
+      field: 'photo_url',
+    },
   },
-  email: {
-    type: String,
-    required: [true, 'Please provide an email'],
-    unique: true,
-    lowercase: true,
-    trim: true,
-    match: [
-      /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/,
-      'Please provide a valid email'
-    ]
-  },
-  password: {
-    type: String,
-    required: [true, 'Please provide a password'],
-    minlength: [6, 'Password must be at least 6 characters'],
-    select: false // Don't return password by default in queries
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now
-  },
-  updatedAt: {
-    type: Date,
-    default: Date.now
+  {
+    tableName: 'users',
+    timestamps: true,
+    defaultScope: {
+      attributes: { exclude: ['password'] },
+    },
+    scopes: {
+      withPassword: {
+        attributes: { include: ['password'] },
+      },
+    },
   }
-}, {
-  timestamps: true
-});
-
-// Update the updatedAt field on save
-userSchema.pre('save', function(next) {
-  this.updatedAt = Date.now();
-  next();
-});
-
-const User = mongoose.model('User', userSchema);
+);
 
 module.exports = User;
