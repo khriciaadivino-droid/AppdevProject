@@ -15,10 +15,38 @@ import { SCREENS } from '../utils/routes';
 
 const { width, height } = Dimensions.get('window');
 
+const FALLBACK_IMAGE = require('../assets/images/logo.png');
+const PRODUCT_IMAGES = {
+    'Charlie-s-Choice-69c01614331a4.jpg': require('../assets/images/Charlie-s-Choice-69c01614331a4.jpg'),
+    'aesthetic-cage-69c0211ba9536.jpg': require('../assets/images/aesthetic-cage-69c0211ba9536.jpg'),
+    'AllPetSolutions-4-Piece-Dog-Grooming-Set-69c0202724f1d.jpg': require('../assets/images/AllPetSolutions-4-Piece-Dog-Grooming-Set-69c0202724f1d.jpg'),
+    'Bark-Bright-69c01f8975e9c.jpg': require('../assets/images/Bark-Bright-69c01f8975e9c.jpg'),
+    'Blue-dog-harness-69c0208b5c230.jpg': require('../assets/images/Blue-dog-harness-69c0208b5c230.jpg'),
+    'pet-wipes-69c03c6755705.jpg': require('../assets/images/pet-wipes-69c03c6755705.jpg'),
+    'Loveabowl-Salmon-Dry-Cat-Food-69c03c1984b88.jpg': require('../assets/images/Loveabowl-Salmon-Dry-Cat-Food-69c03c1984b88.jpg'),
+    'Pet-Feet-Shower-Cup-69c03cdff0f0a.jpg': require('../assets/images/Pet-Feet-Shower-Cup-69c03cdff0f0a.jpg'),
+};
+const TEAM_IMAGES = {
+    'KhriciaDivino.jpg': require('../assets/images/KhriciaDivino.jpg'),
+    'Jim.jpg': require('../assets/images/Jim.jpg'),
+    'Rhea.png': require('../assets/images/Rhea.png'),
+    'vincent.png': require('../assets/images/vincent.png'),
+};
+const GALLERY_IMAGES = {
+    'gallery8.jpg': require('../assets/images/gallery8.jpg'),
+    'gallery6.jpg': require('../assets/images/gallery6.jpg'),
+    'gallery7.jpg': require('../assets/images/gallery7.jpg'),
+    'gallery10.jpg': require('../assets/images/gallery10.jpg'),
+    'gallery11.jpg': require('../assets/images/gallery11.jpg'),
+};
+
 const LandingScreen = () => {
     const navigation = useNavigation();
     const swiperRef = useRef(null);
     const [currentProductIndex, setCurrentProductIndex] = useState(0);
+    const isNarrow = width < 420;
+    const isSmall = width < 360;
+    const teamColumns = isNarrow ? 1 : 2;
 
     const productItems = [
         {
@@ -141,44 +169,21 @@ const LandingScreen = () => {
         <Text style={[styles.star, filled && styles.starFilled]}>★</Text>
     );
 
-    const getProductImage = (filename) => {
-        const images = {
-            'Charlie-s-Choice-69c01614331a4.jpg': require('../assets/images/Charlie-s-Choice-69c01614331a4.jpg'),
-            'aesthetic-cage-69c0211ba9536.jpg': require('../assets/images/aesthetic-cage-69c0211ba9536.jpg'),
-            'AllPetSolutions-4-Piece-Dog-Grooming-Set-69c0202724f1d.jpg': require('../assets/images/AllPetSolutions-4-Piece-Dog-Grooming-Set-69c0202724f1d.jpg'),
-            'Bark-Bright-69c01f8975e9c.jpg': require('../assets/images/Bark-Bright-69c01f8975e9c.jpg'),
-            'Blue-dog-harness-69c0208b5c230.jpg': require('../assets/images/Blue-dog-harness-69c0208b5c230.jpg'),
-            'pet-wipes-69c03c6755705.jpg': require('../assets/images/pet-wipes-69c03c6755705.jpg'),
-            'Loveabowl-Salmon-Dry-Cat-Food-69c03c1984b88.jpg': require('../assets/images/Loveabowl-Salmon-Dry-Cat-Food-69c03c1984b88.jpg'),
-            'Pet-Feet-Shower-Cup-69c03cdff0f0a.jpg': require('../assets/images/Pet-Feet-Shower-Cup-69c03cdff0f0a.jpg'),
-        };
-        return images[filename] || require('../assets/images/logo.png');
-    };
-
-    const getTeamImage = (filename) => {
-        const images = {
-            'KhriciaDivino.jpg': require('../assets/images/KhriciaDivino.jpg'),
-            'Jim.jpg': require('../assets/images/Jim.jpg'),
-            'Rhea.png': require('../assets/images/Rhea.png'),
-            'vincent.png': require('../assets/images/vincent.png'),
-        };
-        return images[filename] || require('../assets/images/logo.png');
-    };
-
-    const getGalleryImage = (filename) => {
-        const images = {
-            'gallery8.jpg': require('../assets/images/gallery8.jpg'),
-            'gallery6.jpg': require('../assets/images/gallery6.jpg'),
-            'gallery7.jpg': require('../assets/images/gallery7.jpg'),
-            'gallery10.jpg': require('../assets/images/gallery10.jpg'),
-            'gallery11.jpg': require('../assets/images/gallery11.jpg'),
-        };
-        return images[filename] || require('../assets/images/logo.png');
-    };
-
     const renderProductCard = ({ item, index }) => (
-        <View style={[styles.productCard, { backgroundColor: index % 2 === 0 ? '#87d3f8' : '#ffffff', marginRight: width * 0.05 }]}>
-            <Image source={getProductImage(item.img)} style={styles.productImage} />
+        <View
+            style={[
+                styles.productCard,
+                {
+                    backgroundColor: index % 2 === 0 ? '#87d3f8' : '#ffffff',
+                    marginRight: width * 0.05,
+                    width: isSmall ? width * 0.86 : width * 0.8,
+                },
+            ]}
+        >
+            <Image
+                source={PRODUCT_IMAGES[item.img] || FALLBACK_IMAGE}
+                style={[styles.productImage, isSmall && styles.productImageSmall]}
+            />
             <Text style={styles.productName}>{item.name}</Text>
             <Text style={styles.productDesc}>{item.desc}</Text>
             <View style={styles.productRating}>
@@ -192,8 +197,8 @@ const LandingScreen = () => {
     );
 
     const renderTeamMember = ({ item }) => (
-        <View style={styles.teamCard}>
-            <Image source={getTeamImage(item.img)} style={styles.teamImage} />
+        <View style={[styles.teamCard, { width: width * 0.72, marginRight: 16 }]}>
+            <Image source={TEAM_IMAGES[item.img] || FALLBACK_IMAGE} style={styles.teamImage} />
             <Text style={styles.teamName}>{item.name}</Text>
             <Text style={styles.teamRole}>{item.role}</Text>
         </View>
@@ -203,7 +208,7 @@ const LandingScreen = () => {
         <View style={[styles.galleryCard, { backgroundColor: item.color, marginRight: 12 }]}>
             <Text style={styles.galleryTitle}>{item.title}</Text>
             <Text style={styles.gallerySubtitle}>{item.subtitle}</Text>
-            <Image source={getGalleryImage(item.img)} style={styles.galleryImage} />
+            <Image source={GALLERY_IMAGES[item.img] || FALLBACK_IMAGE} style={styles.galleryImage} />
         </View>
     );
 
@@ -226,24 +231,40 @@ const LandingScreen = () => {
 
                 <View style={styles.heroCopy}>
                     <Text style={styles.heroSmall}>At PawStuff</Text>
-                    <Text style={styles.heroTitle}>We make pet care simple. Quality supplies, happy pets, wagging tails.</Text>
-                    <Text style={styles.heroDesc}>
+                    <Text style={[styles.heroTitle, isSmall && styles.heroTitleSmall]}>
+                        We make pet care simple. Quality supplies, happy pets, wagging tails.
+                    </Text>
+                    <Text style={[styles.heroDesc, isSmall && styles.heroDescSmall]}>
                         We believe every pet deserves the best. From premium nutrition to playful toys and cozy essentials, we carefully curate products that keep tails wagging and purrs coming.
                     </Text>
-                    <TouchableOpacity style={styles.shopButton} onPress={() => navigation.navigate(SCREENS.LOGIN)}>
+                    <TouchableOpacity
+                        style={styles.shopButton}
+                        onPress={() => navigation.navigate(SCREENS.LOGIN)}
+                        activeOpacity={0.85}
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                        accessibilityRole="button"
+                    >
                         <Text style={styles.shopButtonText}>Shop Now</Text>
                     </TouchableOpacity>
                 </View>
 
-                <Image source={require('../assets/images/ddog2-removebg-preview.png')} style={styles.dogImage} />
-                <Image source={require('../assets/images/cat1-removebg-preview.png')} style={styles.catImage} />
+                <Image
+                    source={require('../assets/images/ddog2-removebg-preview.png')}
+                    style={[styles.dogImage, isSmall && styles.dogImageSmall]}
+                />
+                <Image
+                    source={require('../assets/images/cat1-removebg-preview.png')}
+                    style={[styles.catImage, isSmall && styles.catImageSmall]}
+                />
             </View>
 
             {/* Team Section */}
             <View style={styles.teamSection}>
                 <Text style={styles.sectionSmall}>Meet Our Team</Text>
-                <Text style={styles.sectionTitle}>Meet Our Team</Text>
-                <Text style={styles.sectionDesc}>
+                <Text style={[styles.teamSectionTitle, isSmall && styles.teamSectionTitleSmall]}>
+            
+                </Text>
+                <Text style={[styles.sectionDesc, isSmall && styles.sectionDescSmall]}>
                     Our passionate team is dedicated to delivering the best products and service for pet owners everywhere. We believe in quality, care, and making pets happy.
                 </Text>
 
@@ -251,9 +272,12 @@ const LandingScreen = () => {
                     data={teamMembers}
                     renderItem={renderTeamMember}
                     keyExtractor={(item) => item.id.toString()}
-                    numColumns={2}
-                    scrollEnabled={false}
-                    columnWrapperStyle={styles.teamGrid}
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    scrollEventThrottle={16}
+                    snapToInterval={width * 0.72 + 16}
+                    decelerationRate="fast"
+                    contentContainerStyle={{ paddingHorizontal: 16 }}
                 />
 
                 <TouchableOpacity style={styles.learnMoreButton}>
@@ -263,7 +287,9 @@ const LandingScreen = () => {
 
             {/* Products Section */}
             <View style={styles.productsSection}>
-                <Text style={styles.productsSectionTitle}>Browse Products</Text>
+                <Text style={[styles.productsSectionTitle, isSmall && styles.productsSectionTitleSmall]}>
+                    Browse Products
+                </Text>
                 <FlatList
                     ref={swiperRef}
                     data={productItems}
@@ -285,8 +311,10 @@ const LandingScreen = () => {
 
             {/* Gallery Section */}
             <View style={styles.gallerySection}>
-                <Text style={styles.sectionSmall}>Our Collection</Text>
-                <Text style={styles.galleryTitle2}>Happy Paws, Happy Moments</Text>
+                <Text style={styles.sectionSmall}></Text>
+                <Text style={[styles.galleryTitle2, isSmall && styles.galleryTitle2Small]}>
+                    Happy Paws, Happy Moments
+                </Text>
                 <FlatList
                     data={galleryItems}
                     renderItem={renderGalleryCard}
@@ -302,8 +330,10 @@ const LandingScreen = () => {
             <View style={styles.whyChooseSection}>
                 <View style={styles.whyChooseContent}>
                     <Text style={styles.whyChooseSmall}>Why Choose PawStuff</Text>
-                    <Text style={styles.whyChooseTitle}>Efficiency meets empathy.</Text>
-                    <Text style={styles.whyChooseDesc}>
+                    <Text style={[styles.whyChooseTitle, isSmall && styles.whyChooseTitleSmall]}>
+                        Efficiency meets empathy.
+                    </Text>
+                    <Text style={[styles.whyChooseDesc, isSmall && styles.whyChooseDescSmall]}>
                         We don't just offer products. We help pet parents and pet businesses run smarter daily operations with dependable tools, thoughtful support, and standards you can trust.
                     </Text>
 
@@ -334,8 +364,10 @@ const LandingScreen = () => {
 
             {/* Testimonials Section */}
             <View style={styles.testimonialsSection}>
-                <Text style={styles.testimonialsSectionTitle}>Customer Testimonials</Text>
-                <Text style={styles.testimonialsSectionDesc}>
+                <Text style={[styles.testimonialsSectionTitle, isSmall && styles.testimonialsSectionTitleSmall]}>
+                    Customer Testimonials
+                </Text>
+                <Text style={[styles.testimonialsSectionDesc, isSmall && styles.testimonialsSectionDescSmall]}>
                     Real feedback from pet parents and clinics using PawStuff every day.
                 </Text>
 
@@ -354,15 +386,15 @@ const LandingScreen = () => {
 
             {/* Footer */}
             <View style={styles.footer}>
-                <View style={styles.footerContent}>
-                    <View style={styles.footerColumn}>
+                <View style={[styles.footerContent, isNarrow && styles.footerContentStack]}>
+                    <View style={[styles.footerColumn, isNarrow && styles.footerColumnStack]}>
                         <Text style={styles.footerTitle}>PawStuff</Text>
                         <Text style={styles.footerText}>
                             Making pet care simple and accessible for everyone, one wagging tail at a time.
                         </Text>
                     </View>
 
-                    <View style={styles.footerColumn}>
+                    <View style={[styles.footerColumn, isNarrow && styles.footerColumnStack]}>
                         <Text style={styles.footerSubtitle}>Quick Links</Text>
                         <TouchableOpacity onPress={() => navigation.navigate(SCREENS.LANDING)}>
                             <Text style={styles.footerLink}>Home</Text>
@@ -391,7 +423,7 @@ const styles = StyleSheet.create({
     },
     // Banner Styles
     banner: {
-        height: Math.max(height * 0.6, 500),
+        height: Math.max(height * 0.55, 420),
         backgroundColor: '#ffffff',
         paddingTop: 16,
         paddingHorizontal: 16,
@@ -414,6 +446,8 @@ const styles = StyleSheet.create({
     heroCopy: {
         paddingHorizontal: 12,
         marginTop: 20,
+        position: 'relative',
+        zIndex: 10,
     },
     heroSmall: {
         color: '#1a4d80',
@@ -429,11 +463,19 @@ const styles = StyleSheet.create({
         lineHeight: 32,
         letterSpacing: -0.5,
     },
+    heroTitleSmall: {
+        fontSize: 24,
+        lineHeight: 28,
+    },
     heroDesc: {
         color: '#50555f',
         fontSize: 13,
         lineHeight: 20,
         marginTop: 12,
+    },
+    heroDescSmall: {
+        fontSize: 12,
+        lineHeight: 17,
     },
     shopButton: {
         marginTop: 16,
@@ -442,6 +484,12 @@ const styles = StyleSheet.create({
         paddingVertical: 12,
         paddingHorizontal: 20,
         alignSelf: 'flex-start',
+        zIndex: 12,
+        elevation: 6,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.12,
+        shadowRadius: 6,
     },
     shopButtonText: {
         color: '#ffffff',
@@ -452,18 +500,26 @@ const styles = StyleSheet.create({
     dogImage: {
         position: 'absolute',
         right: 0,
-        bottom: 0,
+        bottom: 135,
         width: width * 0.45,
         height: '100%',
         resizeMode: 'contain',
     },
+    dogImageSmall: {
+        width: width * 0.4,
+        height: '90%',
+    },
     catImage: {
         position: 'absolute',
         left: 16,
-        bottom: 0,
+        bottom: -29,
         width: width * 0.35,
         height: '70%',
         resizeMode: 'contain',
+    },
+    catImageSmall: {
+        width: width * 0.3,
+        height: '60%',
     },
     // Team Section
     teamSection: {
@@ -487,6 +543,22 @@ const styles = StyleSheet.create({
         marginBottom: 16,
         textAlign: 'center',
     },
+    sectionTitleSmall: {
+        fontSize: 24,
+    },
+    teamSectionTitle: {
+        fontSize: 22,
+        fontWeight: '800',
+        color: '#ffffff',
+        marginTop: 8,
+        marginBottom: 16,
+        textAlign: 'left',
+        alignSelf: 'flex-start',
+        paddingHorizontal: 16,
+    },
+    teamSectionTitleSmall: {
+        fontSize: 20,
+    },
     sectionDesc: {
         color: '#e8f0f8',
         fontSize: 13,
@@ -495,21 +567,24 @@ const styles = StyleSheet.create({
         marginBottom: 32,
         maxWidth: '90%',
     },
-    teamGrid: {
-        justifyContent: 'space-between',
-        marginBottom: 16,
-        gap: 16,
+    sectionDescSmall: {
+        fontSize: 12,
+        lineHeight: 18,
     },
     teamCard: {
         backgroundColor: '#ffffff',
         borderRadius: 16,
         padding: 16,
-        width: (width - 64) / 2,
         alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.08,
+        shadowRadius: 4,
+        elevation: 3,
     },
     teamImage: {
         width: '100%',
-        height: (width - 64) / 2,
+        height: width * 0.55,
         borderRadius: 12,
         marginBottom: 12,
         resizeMode: 'cover',
@@ -553,6 +628,9 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         marginBottom: 24,
     },
+    productsSectionTitleSmall: {
+        fontSize: 20,
+    },
     productCard: {
         borderRadius: 16,
         padding: 16,
@@ -569,6 +647,10 @@ const styles = StyleSheet.create({
         height: 110,
         resizeMode: 'contain',
         marginBottom: 12,
+    },
+    productImageSmall: {
+        width: 96,
+        height: 96,
     },
     productName: {
         fontSize: 13,
@@ -620,6 +702,9 @@ const styles = StyleSheet.create({
         marginBottom: 24,
         paddingHorizontal: 16,
         textAlign: 'center',
+    },
+    galleryTitle2Small: {
+        fontSize: 20,
     },
     galleryCard: {
         borderRadius: 22,
@@ -676,11 +761,19 @@ const styles = StyleSheet.create({
         lineHeight: 28,
         marginBottom: 12,
     },
+    whyChooseTitleSmall: {
+        fontSize: 20,
+        lineHeight: 24,
+    },
     whyChooseDesc: {
         color: '#4a5568',
         fontSize: 13,
         lineHeight: 20,
         marginBottom: 20,
+    },
+    whyChooseDescSmall: {
+        fontSize: 12,
+        lineHeight: 18,
     },
     whyChooseList: {
         gap: 16,
@@ -726,11 +819,18 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         marginBottom: 8,
     },
+    testimonialsSectionTitleSmall: {
+        fontSize: 20,
+    },
     testimonialsSectionDesc: {
         color: 'rgba(255, 255, 255, 0.75)',
         fontSize: 12,
         paddingHorizontal: 16,
         marginBottom: 20,
+    },
+    testimonialsSectionDescSmall: {
+        fontSize: 11,
+        lineHeight: 16,
     },
     testimonialCard: {
         backgroundColor: '#f8fafc',
@@ -785,6 +885,12 @@ const styles = StyleSheet.create({
         borderBottomWidth: 1,
         borderBottomColor: '#2d323d',
         paddingBottom: 24,
+    },
+    footerContentStack: {
+        flexDirection: 'column',
+    },
+    footerColumnStack: {
+        marginBottom: 16,
     },
     footerColumn: {
         flex: 1,
