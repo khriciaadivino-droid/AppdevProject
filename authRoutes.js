@@ -31,8 +31,10 @@ const sanitizeUser = userDoc => ({
   id: userDoc.id,
   email: userDoc.email,
   name: userDoc.name,
+  roles: userDoc.roles,
+  status: userDoc.status,
   createdAt: userDoc.createdAt,
-  updatedAt: userDoc.updatedAt,
+  lastLoginAt: userDoc.lastLoginAt,
 });
 
 router.get('/health', (_req, res) => {
@@ -66,6 +68,9 @@ router.post('/auth/register', async (req, res) => {
       name: String(name).trim(),
       email: normalizedEmail,
       password: hashedPassword,
+      roles: ['ROLE_USER'],
+      status: 'active',
+      createdAt: new Date(),
     });
 
     const token = createToken(String(user.id));
@@ -129,6 +134,9 @@ router.post('/auth/login', async (req, res) => {
 
     const token = createToken(String(user.id));
 
+    user.lastLoginAt = new Date();
+    await user.save();
+
     return res.status(200).json({
       success: true,
       message: 'Login successful',
@@ -172,30 +180,17 @@ router.post('/auth/google-login', async (req, res) => {
     let user = await User.findOne({ where: { email: normalizedEmail } });
 
     if (user) {
-      // User exists - check if they need to be migrated to Google auth
-      if (user.authProvider === 'email') {
-        // User previously registered with email - update to also support Google
-        user.authProvider = 'google';
-        user.googleId = googleId;
-        if (photoURL) user.photoURL = photoURL;
-        await user.save();
-        console.log('🔄 User migrated to Google auth:', normalizedEmail);
-      } else if (user.googleId !== googleId) {
-        // Different Google account trying to use same email
-        return res.status(409).json({
-          success: false,
-          message: 'An account with this email already exists. Please use a different Google account.',
-        });
+      if (photoURL && !user.photoURL) {
+        console.log('ℹ️ Ignoring photoURL because local table does not store it yet');
       }
     } else {
       // Create new user from Google login
       user = await User.create({
         name: String(name || email).trim(),
         email: normalizedEmail,
-        authProvider: 'google',
-        googleId: googleId,
-        photoURL: photoURL || null,
         password: null, // Google users don't have passwords
+        roles: ['ROLE_USER'],
+        status: 'active',
       });
       console.log('✅ New Google user created:', normalizedEmail);
     }
@@ -203,8 +198,6 @@ router.post('/auth/google-login', async (req, res) => {
     const token = createToken(String(user.id));
 
     const responseUser = sanitizeUser(user);
-    responseUser.photoURL = user.photoURL;
-    responseUser.authProvider = user.authProvider;
 
     return res.status(200).json({
       success: true,
