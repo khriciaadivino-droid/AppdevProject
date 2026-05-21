@@ -4,6 +4,7 @@ import { useSelector } from 'react-redux';
 import { RootState } from '../app/reducers';
 import { SCREENS } from '../utils/routes';
 import DashboardUserScreen from '../screens/DashboardUserScreen';
+import NotificationsScreen from '../screens/NotificationsScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import PetProfilesScreen from '../screens/PetProfilesScreen';
 import AddPetScreen from '../screens/AddPetScreen';
@@ -12,12 +13,14 @@ import OrdersScreen from '../screens/OrdersScreen';
 import AddOrderScreen from '../screens/AddOrderScreen';
 import EditOrderScreen from '../screens/EditOrderScreen';
 import AddProductScreen from '../screens/AddProductScreen';
+import ProductsScreen from '../screens/ProductsScreen';
 import CartScreen from '../screens/CartScreen';
 import CheckoutScreen from '../screens/CheckoutScreen';
 
 // Type definitions for navigation params
 export type MainStackParamList = {
     [SCREENS.DASHBOARD_USER]: undefined;
+    [SCREENS.NOTIFICATIONS]: undefined;
     [SCREENS.PROFILE]: undefined;
     [SCREENS.PET_PROFILES]: undefined;
     [SCREENS.ADD_PET]: undefined;
@@ -26,6 +29,7 @@ export type MainStackParamList = {
     [SCREENS.ADD_ORDER]: undefined;
     [SCREENS.EDIT_ORDER]: { orderId: number; order?: any };
     [SCREENS.ADD_PRODUCT]: undefined;
+    [SCREENS.PRODUCTS]: undefined;
     [SCREENS.CART]: undefined;
     [SCREENS.CHECKOUT]: undefined;
 };
@@ -47,6 +51,11 @@ const MainNav: FC = () => {
             <Stack.Screen
                 name={SCREENS.DASHBOARD_USER}
                 component={DashboardUserScreen}
+                options={{ headerShown: false }}
+            />
+            <Stack.Screen
+                name={SCREENS.NOTIFICATIONS}
+                component={NotificationsScreen}
                 options={{ headerShown: false }}
             />
             <Stack.Screen
@@ -87,6 +96,11 @@ const MainNav: FC = () => {
             <Stack.Screen
                 name={SCREENS.ADD_PRODUCT}
                 component={AddProductScreen}
+                options={{ headerShown: false }}
+            />
+            <Stack.Screen
+                name={SCREENS.PRODUCTS}
+                component={ProductsScreen}
                 options={{ headerShown: false }}
             />
             <Stack.Screen

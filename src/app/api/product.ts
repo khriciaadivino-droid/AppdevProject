@@ -13,6 +13,7 @@ export interface ProductApiItem {
     quantity?: number;
     category?: string | { name?: string } | null;
     image?: string;
+    imageUrl?: string | null;
     imagefilename?: string;
 }
 

@@ -55,7 +55,7 @@ const CartScreen: FC<CartScreenProps> = ({ navigation }) => {
                     <Text style={styles.emptySubtitle}>Browse products and add items to your cart.</Text>
                     <TouchableOpacity
                         style={styles.browseBtn}
-                        onPress={() => navigation.navigate(SCREENS.DASHBOARD_USER)}
+                        onPress={() => navigation.navigate(SCREENS.PRODUCTS)}
                     >
                         <Text style={styles.browseBtnText}>Browse Products</Text>
                     </TouchableOpacity>

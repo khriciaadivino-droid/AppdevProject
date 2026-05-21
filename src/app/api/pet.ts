@@ -3,7 +3,7 @@
  * CRUD operations for pet profiles
  */
 
-import { apiGet, apiPost, apiPut, apiDelete } from './client';
+import { apiClient, apiGet, apiPost, apiPut, apiDelete } from './client';
 import { Pet, CreatePetInput, UpdatePetInput } from '../../types/index';
 
 interface ApiResponse<T> {
@@ -15,6 +15,15 @@ interface ApiResponse<T> {
 interface PetListResponse {
     pets: Pet[];
     total: number;
+}
+
+interface UploadPetImageApiResponse {
+    success?: boolean;
+    message?: string;
+    data?: {
+        filename: string;
+        url: string;
+    };
 }
 
 /**
@@ -69,6 +78,37 @@ export const deletePet = async (id: string, token: string): Promise<ApiResponse<
 };
 
 /**
+ * Upload a pet image. Returns { filename, url } on success.
+ */
+export const uploadPetImage = async (
+    imageUri: string,
+    token: string
+): Promise<ApiResponse<{ filename: string; url: string }>> => {
+    const filename = imageUri.split('/').pop() ?? 'pet-photo.jpg';
+    const ext = filename.split('.').pop()?.toLowerCase() ?? 'jpg';
+    const mimeType = ext === 'png' ? 'image/png' : ext === 'gif' ? 'image/gif' : 'image/jpeg';
+
+    const formData = new FormData();
+    formData.append('image', { uri: imageUri, name: filename, type: mimeType } as any);
+
+    try {
+        const response = await apiClient<UploadPetImageApiResponse>('/pet-profiles/upload/image', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}` },
+            body: formData,
+        });
+
+        return {
+            status: response.status,
+            ok: response.ok,
+            data: response.data?.data,
+        };
+    } catch (error: any) {
+        return { status: 0, ok: false, data: undefined };
+    }
+};
+
+/**
  * Legacy function names for backwards compatibility
  */
 export const getAll = (token?: string) => getPets(token);
@@ -84,6 +124,7 @@ export default {
     updatePet,
     patchPet,
     deletePet,
+    uploadPetImage,
     getAll,
     getById,
     create,

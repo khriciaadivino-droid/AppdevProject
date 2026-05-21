@@ -124,6 +124,16 @@ const DashboardSidebar: FC<DashboardSidebarProps> = ({ isOpen, onClose, stats })
                         onPress={() => handleNavigation(SCREENS.ORDERS)}
                     />
                     <SidebarNavItem
+                        icon="📦"
+                        label="Products"
+                        onPress={() => handleNavigation(SCREENS.PRODUCTS)}
+                    />
+                    <SidebarNavItem
+                        icon="🔔"
+                        label="Notifications"
+                        onPress={() => handleNavigation(SCREENS.NOTIFICATIONS)}
+                    />
+                    <SidebarNavItem
                         icon="👤"
                         label="My Profile"
                         onPress={() => handleNavigation(SCREENS.PROFILE)}
@@ -167,8 +177,8 @@ const styles = StyleSheet.create<{ [key: string]: ViewStyle | TextStyle }>({
         borderRightColor: '#E5E7EB',
     },
     profileSection: {
-        paddingHorizontal: 16,
-        paddingVertical: 24,
+        paddingHorizontal: 18,
+        paddingVertical: 22,
         borderBottomWidth: 1,
         borderBottomColor: '#E5E7EB',
         backgroundColor: '#111827',
@@ -197,6 +207,7 @@ const styles = StyleSheet.create<{ [key: string]: ViewStyle | TextStyle }>({
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: 16,
+        minHeight: 54,
         paddingVertical: 14,
         borderBottomWidth: 1,
         borderBottomColor: '#F3F4F6',
@@ -220,7 +231,7 @@ const styles = StyleSheet.create<{ [key: string]: ViewStyle | TextStyle }>({
         color: '#DC2626',
     },
     statsSection: {
-        paddingHorizontal: 16,
+        paddingHorizontal: 18,
         paddingVertical: 16,
         borderBottomWidth: 1,
         borderBottomColor: '#E5E7EB',
@@ -236,7 +247,7 @@ const styles = StyleSheet.create<{ [key: string]: ViewStyle | TextStyle }>({
         flexDirection: 'row',
         flexWrap: 'wrap',
         justifyContent: 'space-between',
-        gap: 8,
+        gap: 10,
     },
     statChip: {
         width: '48%',
@@ -244,6 +255,8 @@ const styles = StyleSheet.create<{ [key: string]: ViewStyle | TextStyle }>({
         borderRadius: 12,
         paddingVertical: 12,
         paddingHorizontal: 10,
+        minHeight: 72,
+        justifyContent: 'center',
     },
     statChipValue: {
         fontSize: 18,

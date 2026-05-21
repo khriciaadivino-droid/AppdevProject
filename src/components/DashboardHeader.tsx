@@ -1,8 +1,9 @@
-import React, { FC, useState } from 'react';
+import React, { FC, useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, TextInput, StyleSheet, ViewStyle, TextStyle } from 'react-native';
-import { useNavigation, NavigationProp, ParamListBase } from '@react-navigation/native';
+import { useIsFocused, useNavigation } from '@react-navigation/native';
 import { useSelector } from 'react-redux';
 import { RootState } from '../app/reducers';
+import { extractNotifications, getNotifications } from '../app/api/notification';
 import { SCREENS } from '../utils/routes';
 
 // Type definitions
@@ -20,14 +21,19 @@ interface DashboardHeaderProps {
 const DashboardHeader: FC<DashboardHeaderProps> = ({ onMenuPress }) => {
     const [searchQuery, setSearchQuery] = useState<string>('');
     const [showSearch, setShowSearch] = useState<boolean>(false);
-    const navigation = useNavigation<NavigationProp<ParamListBase>>();
+    const [notificationCount, setNotificationCount] = useState<number>(0);
+    const navigation = useNavigation<any>();
+    const isFocused = useIsFocused();
+    const { data: user } = useSelector((state: RootState) => state.auth);
     const cartItems = useSelector((state: RootState) => state.cart.items);
     const cartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
     const searchItems: SearchItem[] = [
         { name: 'Pet Profiles', icon: '🐾', route: 'PetProfiles' },
         { name: 'My Pets', icon: '👤', route: 'PetProfiles' },
+        { name: 'Products', icon: '📦', route: SCREENS.PRODUCTS },
         { name: 'Orders', icon: '🛒', route: 'Orders' },
+        { name: 'Notifications', icon: '🔔', route: SCREENS.NOTIFICATIONS },
         { name: 'Dashboard', icon: '📊', route: 'DashboardUser' },
         { name: 'Profile', icon: '⚙️', route: 'Profile' },
     ];
@@ -46,6 +52,44 @@ const DashboardHeader: FC<DashboardHeaderProps> = ({ onMenuPress }) => {
         setSearchQuery('');
         setShowSearch(false);
     };
+
+    useEffect(() => {
+        let isActive = true;
+
+        const loadNotifications = async (): Promise<void> => {
+            if (!user?.token) {
+                if (isActive) {
+                    setNotificationCount(0);
+                }
+                return;
+            }
+
+            try {
+                const response = await getNotifications(user.token, { limit: 9 });
+                if (!isActive) {
+                    return;
+                }
+
+                if (response.ok) {
+                    setNotificationCount(extractNotifications(response.data).length);
+                } else {
+                    setNotificationCount(0);
+                }
+            } catch {
+                if (isActive) {
+                    setNotificationCount(0);
+                }
+            }
+        };
+
+        if (isFocused) {
+            loadNotifications();
+        }
+
+        return () => {
+            isActive = false;
+        };
+    }, [isFocused, user?.token]);
 
     return (
         <View style={styles.container}>
@@ -87,11 +131,16 @@ const DashboardHeader: FC<DashboardHeaderProps> = ({ onMenuPress }) => {
                 </TouchableOpacity>
 
                 {/* Notifications Bell */}
-                <TouchableOpacity style={styles.notificationButton}>
+                <TouchableOpacity
+                    style={styles.notificationButton}
+                    onPress={() => navigation.navigate(SCREENS.NOTIFICATIONS as never)}
+                >
                     <Text style={styles.notificationIcon}>🔔</Text>
-                    <View style={styles.notificationBadge}>
-                        <Text style={styles.badgeText}>3</Text>
-                    </View>
+                    {notificationCount > 0 ? (
+                        <View style={styles.notificationBadge}>
+                            <Text style={styles.badgeText}>{notificationCount > 99 ? '99+' : notificationCount}</Text>
+                        </View>
+                    ) : null}
                 </TouchableOpacity>
             </View>
 
@@ -132,35 +181,39 @@ const styles = StyleSheet.create<{ [key: string]: ViewStyle | TextStyle }>({
     topBar: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: 12,
+        paddingHorizontal: 14,
         paddingVertical: 12,
-        gap: 8,
+        gap: 10,
     },
     menuButton: {
-        padding: 8,
-        borderRadius: 6,
+        width: 42,
+        height: 42,
+        borderRadius: 12,
         backgroundColor: '#F3F4F6',
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     menuIcon: {
-        fontSize: 20,
+        fontSize: 18,
         color: '#374151',
     },
     searchContainer: {
         flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
+        minHeight: 42,
         backgroundColor: '#F3F4F6',
-        borderRadius: 8,
+        borderRadius: 12,
         paddingHorizontal: 12,
     },
     searchIcon: {
-        fontSize: 16,
+        fontSize: 15,
         marginRight: 8,
         color: '#9CA3AF',
     },
     searchInput: {
         flex: 1,
-        paddingVertical: 8,
+        paddingVertical: 0,
         fontSize: 14,
         color: '#111827',
     },
@@ -173,12 +226,15 @@ const styles = StyleSheet.create<{ [key: string]: ViewStyle | TextStyle }>({
     },
     notificationButton: {
         position: 'relative',
-        padding: 8,
-        borderRadius: 6,
+        width: 42,
+        height: 42,
+        borderRadius: 12,
         backgroundColor: '#F3F4F6',
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     notificationIcon: {
-        fontSize: 18,
+        fontSize: 17,
         color: '#374151',
     },
     notificationBadge: {
@@ -202,11 +258,13 @@ const styles = StyleSheet.create<{ [key: string]: ViewStyle | TextStyle }>({
         borderTopWidth: 1,
         borderTopColor: '#E5E7EB',
         maxHeight: 300,
+        paddingVertical: 4,
     },
     searchResultItem: {
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: 16,
+        minHeight: 52,
         paddingVertical: 12,
         borderBottomWidth: 1,
         borderBottomColor: '#F3F4F6',
@@ -221,7 +279,7 @@ const styles = StyleSheet.create<{ [key: string]: ViewStyle | TextStyle }>({
         fontWeight: '500',
     },
     noResults: {
-        paddingVertical: 20,
+        paddingVertical: 18,
         alignItems: 'center',
         backgroundColor: '#F9FAFB',
     },

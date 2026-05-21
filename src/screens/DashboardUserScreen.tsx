@@ -12,7 +12,6 @@ import { useIsFocused } from '@react-navigation/native';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../app/reducers/index';
 import { userLogout } from '../app/reducers/auth';
-import { cartAddItem } from '../app/reducers/cart';
 import DashboardHeader from '../components/DashboardHeader';
 import DashboardSidebar from '../components/DashboardSidebar';
 import { getProducts, ProductApiItem } from '../app/api/product';
@@ -24,14 +23,12 @@ import { SCREENS } from '../utils/routes';
 interface DashboardSummary {
     totalPetProfiles: number;
     totalOrders: number;
-    totalProducts: number;
     totalStocks: number;
 }
 
 interface DashboardProduct {
     id: number;
     name: string;
-    description: string;
     price: number;
     quantity: number;
     category: string;
@@ -54,13 +51,11 @@ interface QuickActionProps {
 
 interface ProductRowProps {
     product: DashboardProduct;
-    onAddToCart: (product: DashboardProduct) => void;
 }
 
 const EMPTY_SUMMARY: DashboardSummary = {
     totalPetProfiles: 0,
     totalOrders: 0,
-    totalProducts: 0,
     totalStocks: 0,
 };
 
@@ -86,14 +81,13 @@ const normalizeProducts = (payload: any): DashboardProduct[] => {
     return rawItems.map((item) => ({
         id: Number(item.id),
         name: item.name || 'Unnamed product',
-        description: item.description || 'No description available.',
         price: Number(item.price) || 0,
         quantity: Number(item.quantity) || 0,
         category:
             typeof item.category === 'string'
                 ? item.category
                 : item.category?.name || 'Uncategorized',
-        image: item.imagefilename || item.image || null,
+        image: item.imageUrl || item.imagefilename || item.image || null,
     }));
 };
 
@@ -127,7 +121,7 @@ const QuickAction: FC<QuickActionProps> = ({ icon, label, hint, onPress }) => (
     </TouchableOpacity>
 );
 
-const ProductRow: FC<ProductRowProps> = ({ product, onAddToCart }) => {
+const ProductRow: FC<ProductRowProps> = ({ product }) => {
     const imageUrl = product.image
         ? product.image.startsWith('http')
             ? product.image
@@ -153,19 +147,6 @@ const ProductRow: FC<ProductRowProps> = ({ product, onAddToCart }) => {
                     ₱{product.price.toFixed(2)} · {product.quantity > 0 ? `${product.quantity} in stock` : 'Out of stock'}
                 </Text>
             </View>
-
-            <TouchableOpacity
-                style={[
-                    styles.orderButton,
-                    product.quantity <= 0 && styles.orderButtonDisabled,
-                ]}
-                onPress={() => onAddToCart(product)}
-                disabled={product.quantity <= 0}
-            >
-                <Text style={styles.orderButtonText}>
-                    {product.quantity > 0 ? '🛒 Add to Cart' : 'Sold Out'}
-                </Text>
-            </TouchableOpacity>
         </View>
     );
 };
@@ -182,7 +163,6 @@ const DashboardUserContent: FC<DashboardUserContentProps> = ({ navigation }) => 
     const [products, setProducts] = useState<DashboardProduct[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [refreshNonce, setRefreshNonce] = useState(0);
     const { data: user, isLoading: authLoading } = useSelector((state: RootState) => state.auth);
     const canSeeStockTotals = Boolean(
         user?.roles?.some((role) => role === 'ROLE_ADMIN' || role === 'ROLE_STAFF')
@@ -200,8 +180,8 @@ const DashboardUserContent: FC<DashboardUserContentProps> = ({ navigation }) => 
                 if (isActive) {
                     setSummary(EMPTY_SUMMARY);
                     setProducts([]);
-                    setError('Please sign in again to load your dashboard.');
                     setLoading(false);
+                    setError('Please sign in again to load your dashboard.');
                 }
                 return;
             }
@@ -212,37 +192,36 @@ const DashboardUserContent: FC<DashboardUserContentProps> = ({ navigation }) => 
             }
 
             try {
-                const [productResponse, orderResponse, petResponse] = await Promise.all([
-                    getProducts(user.token),
+                const [orderResponse, petResponse, productResponse] = await Promise.all([
                     getOrders(user.token),
                     getPets(user.token),
+                    getProducts(user.token),
                 ]);
 
                 if (!isActive) {
                     return;
                 }
 
-                const normalizedProducts = productResponse.ok
-                    ? normalizeProducts(productResponse.data)
-                    : [];
                 const orderItems = orderResponse.ok ? getCollection(orderResponse.data, 'orders') : [];
                 const petItems = petResponse.ok ? getCollection(petResponse.data, 'pets') : [];
+                const normalizedProducts = productResponse.ok ? normalizeProducts(productResponse.data) : [];
                 const failedSections = [
-                    !productResponse.ok ? 'products' : null,
                     !orderResponse.ok ? 'orders' : null,
                     !petResponse.ok ? 'pets' : null,
+                    !productResponse.ok ? 'products' : null,
                 ].filter(Boolean) as string[];
 
                 setSummary({
                     totalPetProfiles: petItems.length,
                     totalOrders: orderItems.length,
-                    totalProducts: normalizedProducts.length,
-                    totalStocks: normalizedProducts.reduce(
-                        (total, product) => total + (Number(product.quantity) || 0),
-                        0
-                    ),
+                    totalStocks: canSeeStockTotals
+                        ? normalizedProducts.reduce(
+                            (total, product) => total + (Number(product.quantity) || 0),
+                            0
+                        )
+                        : 0,
                 });
-                setProducts(normalizedProducts.slice(0, 4));
+                setProducts(normalizedProducts.filter((product) => product.quantity > 0).slice(0, 4));
 
                 if (failedSections.length > 0) {
                     setError(`Some sections could not refresh: ${failedSections.join(', ')}.`);
@@ -251,7 +230,7 @@ const DashboardUserContent: FC<DashboardUserContentProps> = ({ navigation }) => 
                 if (isActive) {
                     setSummary(EMPTY_SUMMARY);
                     setProducts([]);
-                    setError('Unable to reach your backend right now.');
+                    setError('Unable to load your dashboard right now.');
                 }
             } finally {
                 if (isActive) {
@@ -265,27 +244,11 @@ const DashboardUserContent: FC<DashboardUserContentProps> = ({ navigation }) => 
         return () => {
             isActive = false;
         };
-    }, [isFocused, user?.token, refreshNonce]);
-
-    const triggerRefresh = (): void => {
-        setRefreshNonce((current) => current + 1);
-    };
+    }, [isFocused, user?.token, canSeeStockTotals]);
 
     const handleLogout = (): void => {
         setSidebarOpen(false);
         dispatch(userLogout());
-    };
-
-    const handleAddToCart = (product: DashboardProduct): void => {
-        dispatch(cartAddItem({
-            productId: product.id,
-            name: product.name,
-            price: product.price,
-            quantity: 1,
-            maxStock: product.quantity,
-            image: product.image,
-        }) as any);
-        navigation.navigate(SCREENS.CART as never);
     };
 
     const quickActions = [
@@ -315,12 +278,6 @@ const DashboardUserContent: FC<DashboardUserContentProps> = ({ navigation }) => 
         },
     ];
 
-    const backendStatus = loading
-        ? 'Syncing with backend...'
-        : error
-            ? 'Backend needs attention'
-            : 'Live backend connected';
-
     return (
         <View style={styles.container}>
             <DashboardHeader onMenuPress={() => setSidebarOpen(true)} />
@@ -338,12 +295,7 @@ const DashboardUserContent: FC<DashboardUserContentProps> = ({ navigation }) => 
                                 Hello, {getFirstName(user?.name, user?.email)}
                             </Text>
                             <Text style={styles.heroSubtitle}>
-                                Your dashboard is now focused on live backend data.
-                            </Text>
-                        </View>
-                        <View style={[styles.statusBadge, error ? styles.statusBadgeWarning : styles.statusBadgeLive]}>
-                            <Text style={[styles.statusBadgeText, error ? styles.statusBadgeTextWarning : styles.statusBadgeTextLive]}>
-                                {backendStatus}
+                                Welcome back to your pet care dashboard. Manage your pets and orders in one place.
                             </Text>
                         </View>
                     </View>
@@ -354,17 +306,58 @@ const DashboardUserContent: FC<DashboardUserContentProps> = ({ navigation }) => 
                 <View style={styles.summaryGrid}>
                     <SummaryCard icon="🐾" label="Pet Profiles" value={summary.totalPetProfiles} accent="#DBEAFE" />
                     <SummaryCard icon="📋" label="Orders" value={summary.totalOrders} accent="#EDE9FE" />
-                    <SummaryCard icon="📦" label="Products" value={summary.totalProducts} accent="#DCFCE7" />
                     {canSeeStockTotals ? (
                         <SummaryCard icon="📊" label="Stock" value={summary.totalStocks} accent="#FEF3C7" />
                     ) : null}
+                </View>
+
+                {error ? (
+                    <View style={styles.errorBanner}>
+                        <Text style={styles.errorBannerText}>{error}</Text>
+                    </View>
+                ) : null}
+
+                <View style={styles.sectionCard}>
+                    <View style={styles.sectionHeader}>
+                        <View>
+                            <Text style={styles.sectionTitle}>Available Products</Text>
+                            <Text style={styles.sectionSubtitle}>Preview a few items before opening the full catalog.</Text>
+                        </View>
+                    </View>
+
+                    {loading ? (
+                        <View style={styles.loadingState}>
+                            <ActivityIndicator size="large" color="#2563EB" />
+                            <Text style={styles.loadingText}>Refreshing products...</Text>
+                        </View>
+                    ) : products.length > 0 ? (
+                        <View style={styles.productList}>
+                            {products.map((product) => (
+                                <ProductRow key={product.id} product={product} />
+                            ))}
+                        </View>
+                    ) : (
+                        <View style={styles.emptyStateCard}>
+                            <Text style={styles.emptyStateTitle}>No products available yet</Text>
+                            <Text style={styles.emptyStateText}>
+                                Add products to your catalog and they will appear here.
+                            </Text>
+                        </View>
+                    )}
+
+                    <TouchableOpacity
+                        style={styles.productFooterButton}
+                        onPress={() => navigation.navigate(SCREENS.PRODUCTS)}
+                    >
+                        <Text style={styles.productFooterButtonText}>View All Products</Text>
+                    </TouchableOpacity>
                 </View>
 
                 <View style={styles.sectionCard}>
                     <View style={styles.sectionHeader}>
                         <View>
                             <Text style={styles.sectionTitle}>Quick Actions</Text>
-                            <Text style={styles.sectionSubtitle}>Everything here routes to working backend-connected screens.</Text>
+                            <Text style={styles.sectionSubtitle}>Jump straight to the parts of the app you use most.</Text>
                         </View>
                     </View>
 
@@ -379,45 +372,6 @@ const DashboardUserContent: FC<DashboardUserContentProps> = ({ navigation }) => 
                             />
                         ))}
                     </View>
-                </View>
-
-                <View style={styles.sectionCard}>
-                    <View style={styles.sectionHeader}>
-                        <View>
-                            <Text style={styles.sectionTitle}>Available Products</Text>
-                            <Text style={styles.sectionSubtitle}>Fresh from your backend catalog.</Text>
-                        </View>
-
-                        <TouchableOpacity style={styles.secondaryButton} onPress={triggerRefresh}>
-                            <Text style={styles.secondaryButtonText}>Refresh</Text>
-                        </TouchableOpacity>
-                    </View>
-
-                    {loading ? (
-                        <View style={styles.loadingState}>
-                            <ActivityIndicator size="large" color="#2563EB" />
-                            <Text style={styles.loadingText}>Refreshing dashboard...</Text>
-                        </View>
-                    ) : products.length > 0 ? (
-                        <View style={styles.productList}>
-                            {products.map((product) => (
-                                <ProductRow key={product.id} product={product} onAddToCart={handleAddToCart} />
-                            ))}
-                        </View>
-                    ) : (
-                        <View style={styles.emptyStateCard}>
-                            <Text style={styles.emptyStateTitle}>No products available yet</Text>
-                            <Text style={styles.emptyStateText}>
-                                Once products are added on the backend, they will appear here automatically.
-                            </Text>
-                        </View>
-                    )}
-
-                    {error && (
-                        <View style={styles.errorBanner}>
-                            <Text style={styles.errorBannerText}>{error}</Text>
-                        </View>
-                    )}
                 </View>
 
                 <View style={styles.accountCard}>
@@ -478,7 +432,7 @@ const styles = StyleSheet.create({
         marginBottom: 16,
     },
     heroHeader: {
-        gap: 12,
+        gap: 14,
     },
     heroTitle: {
         fontSize: 28,
@@ -501,7 +455,7 @@ const styles = StyleSheet.create({
         borderRadius: 999,
         paddingHorizontal: 12,
         paddingVertical: 6,
-        marginTop: 16,
+        marginTop: 12,
     },
     statusBadgeLive: {
         backgroundColor: '#DCFCE7',
@@ -531,14 +485,16 @@ const styles = StyleSheet.create({
         borderRadius: 16,
         padding: 16,
         marginBottom: 12,
+        minHeight: 132,
+        justifyContent: 'space-between',
     },
     summaryIconWrap: {
-        width: 42,
-        height: 42,
+        width: 46,
+        height: 46,
         borderRadius: 12,
         justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: 14,
+        marginBottom: 12,
     },
     summaryIcon: {
         fontSize: 20,
@@ -563,7 +519,7 @@ const styles = StyleSheet.create({
     sectionHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        alignItems: 'flex-start',
+        alignItems: 'center',
         gap: 12,
         marginBottom: 14,
     },
@@ -581,8 +537,12 @@ const styles = StyleSheet.create({
     secondaryButton: {
         backgroundColor: '#EEF2FF',
         borderRadius: 10,
-        paddingHorizontal: 12,
+        minWidth: 82,
+        minHeight: 40,
+        paddingHorizontal: 14,
         paddingVertical: 9,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     secondaryButtonText: {
         fontSize: 12,
@@ -600,9 +560,11 @@ const styles = StyleSheet.create({
         borderRadius: 14,
         padding: 14,
         marginBottom: 12,
+        minHeight: 136,
+        justifyContent: 'space-between',
     },
     quickActionIcon: {
-        fontSize: 24,
+        fontSize: 22,
         marginBottom: 10,
     },
     quickActionLabel: {
@@ -628,7 +590,7 @@ const styles = StyleSheet.create({
         marginTop: 12,
     },
     productList: {
-        gap: 12,
+        gap: 14,
     },
     productRow: {
         flexDirection: 'row',
@@ -636,28 +598,31 @@ const styles = StyleSheet.create({
         padding: 12,
         borderRadius: 14,
         backgroundColor: '#F9FAFB',
+        minHeight: 88,
     },
     productThumb: {
-        width: 56,
-        height: 56,
-        borderRadius: 12,
+        width: 64,
+        height: 64,
+        borderRadius: 14,
         backgroundColor: '#E5E7EB',
         marginRight: 12,
     },
     productThumbFallback: {
-        width: 56,
-        height: 56,
-        borderRadius: 12,
+        width: 64,
+        height: 64,
+        borderRadius: 14,
         backgroundColor: '#E5E7EB',
         justifyContent: 'center',
         alignItems: 'center',
         marginRight: 12,
     },
     productThumbEmoji: {
-        fontSize: 24,
+        fontSize: 26,
     },
     productInfo: {
         flex: 1,
+        justifyContent: 'center',
+        paddingRight: 8,
     },
     productCategory: {
         fontSize: 10,
@@ -679,18 +644,22 @@ const styles = StyleSheet.create({
     orderButton: {
         backgroundColor: '#111827',
         borderRadius: 10,
+        minWidth: 102,
         paddingHorizontal: 12,
         paddingVertical: 10,
         marginLeft: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     orderButtonDisabled: {
         backgroundColor: '#9CA3AF',
     },
     orderButtonText: {
-        fontSize: 11,
+        fontSize: 12,
         fontWeight: '800',
         color: '#FFFFFF',
         textTransform: 'uppercase',
+        textAlign: 'center',
     },
     emptyStateCard: {
         backgroundColor: '#F9FAFB',
@@ -710,6 +679,22 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         lineHeight: 19,
         marginTop: 6,
+    },
+    productFooterButton: {
+        marginTop: 16,
+        minHeight: 46,
+        borderRadius: 14,
+        backgroundColor: '#111827',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+    },
+    productFooterButtonText: {
+        fontSize: 13,
+        fontWeight: '800',
+        color: '#FFFFFF',
+        letterSpacing: 0.2,
     },
     errorBanner: {
         backgroundColor: '#FEF3C7',
@@ -759,8 +744,10 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: '#D1D5DB',
         borderRadius: 12,
+        minHeight: 46,
         paddingVertical: 13,
         alignItems: 'center',
+        justifyContent: 'center',
     },
     secondaryActionText: {
         fontSize: 13,
@@ -771,8 +758,10 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: '#DC2626',
         borderRadius: 12,
+        minHeight: 46,
         paddingVertical: 13,
         alignItems: 'center',
+        justifyContent: 'center',
     },
     logoutText: {
         fontSize: 13,

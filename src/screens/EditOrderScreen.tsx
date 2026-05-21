@@ -58,6 +58,10 @@ const normalizeProducts = (payload: any): ProductOption[] => {
     }));
 };
 
+const isLockedOrderStatus = (status?: string): boolean => {
+    return ['completed', 'delivered'].includes((status || '').toLowerCase());
+};
+
 const EditOrderScreen: FC<EditOrderScreenProps> = ({ route, navigation }) => {
     const { orderId } = route.params || {};
     const dispatch = useDispatch();
@@ -65,6 +69,7 @@ const EditOrderScreen: FC<EditOrderScreenProps> = ({ route, navigation }) => {
     const { isLoading, error } = useSelector((state: RootState) => state.order);
     const canEditStatus = Boolean(user?.roles?.includes('ROLE_ADMIN'));
     const originalOrder = route.params?.order;
+    const isLockedOrder = isLockedOrderStatus(originalOrder?.status);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [orderNumber, setOrderNumber] = useState<string>('');
     const [productId, setProductId] = useState<string>('');
@@ -168,6 +173,12 @@ const EditOrderScreen: FC<EditOrderScreenProps> = ({ route, navigation }) => {
     }, [error, isLoading, isSubmitting, navigation]);
 
     const handleUpdateOrder = (): void => {
+        if (isLockedOrder) {
+            Alert.alert('Order locked', 'Completed orders can no longer be edited.');
+            navigation.goBack();
+            return;
+        }
+
         if (!selectedProduct) {
             Alert.alert('Validation', 'Please choose a valid product with available stock.');
             return;
@@ -218,167 +229,179 @@ const EditOrderScreen: FC<EditOrderScreenProps> = ({ route, navigation }) => {
         <View style={styles.container}>
             <DashboardHeader onMenuPress={() => { }} />
             <ScrollView style={styles.content}>
-                <View style={styles.formCard}>
-                    <Text style={styles.formTitle}>✏️ Edit Order</Text>
-
-                    <View style={styles.formGroup}>
-                        <Text style={styles.label}>Order Number</Text>
-                        <TextInput
-                            style={styles.readOnlyInput}
-                            value={orderNumber}
-                            editable={false}
-                        />
+                {isLockedOrder ? (
+                    <View style={styles.lockedCard}>
+                        <Text style={styles.lockedTitle}>Order Locked</Text>
+                        <Text style={styles.lockedText}>
+                            Completed orders can no longer be edited.
+                        </Text>
+                        <TouchableOpacity style={styles.cancelBtn} onPress={() => navigation.goBack()}>
+                            <Text style={styles.cancelBtnText}>Back</Text>
+                        </TouchableOpacity>
                     </View>
+                ) : (
+                    <View style={styles.formCard}>
+                        <Text style={styles.formTitle}>✏️ Edit Order</Text>
 
-                    <View style={styles.formGroup}>
-                        <Text style={styles.label}>Product ID *</Text>
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Enter product ID"
-                            value={productId}
-                            onChangeText={setProductId}
-                            editable={!isLoading}
-                        />
-                        {productsLoading ? (
-                            <Text style={styles.helperText}>Loading live stock...</Text>
-                        ) : selectedProduct ? (
-                            <View style={styles.stockInfoCard}>
-                                <Text style={styles.stockInfoTitle}>{selectedProduct.name}</Text>
-                                <Text style={styles.stockInfoText}>Available for this order: {availableStock}</Text>
-                                <Text style={styles.stockInfoText}>Unit price: ₱{selectedProduct.price.toFixed(2)}</Text>
-                            </View>
-                        ) : productId.trim() ? (
-                            <Text style={styles.errorText}>No matching product found for this ID.</Text>
-                        ) : null}
-                        {productLookupError ? (
-                            <Text style={styles.errorText}>{productLookupError}</Text>
-                        ) : null}
-                    </View>
-
-                    <View style={styles.formGroup}>
-                        <Text style={styles.label}>Customer Name *</Text>
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Enter customer name"
-                            value={customerName}
-                            onChangeText={setCustomerName}
-                            editable={!isLoading}
-                        />
-                    </View>
-
-                    <View style={styles.formGroup}>
-                        <Text style={styles.label}>Customer Email</Text>
-                        <TextInput
-                            style={styles.input}
-                            placeholder="customer@email.com"
-                            value={customerEmail}
-                            onChangeText={setCustomerEmail}
-                            keyboardType="email-address"
-                            editable={!isLoading}
-                        />
-                    </View>
-
-                    {fulfillmentType ? (
                         <View style={styles.formGroup}>
-                            <Text style={styles.label}>Fulfillment Type</Text>
-                            <View style={[
-                                styles.fulfillmentInfoCard,
-                                fulfillmentType.toLowerCase() === 'delivery'
-                                    ? styles.fulfillmentInfoCardDelivery
-                                    : styles.fulfillmentInfoCardPickup,
-                            ]}>
-                                <Text style={[
-                                    styles.fulfillmentInfoText,
-                                    fulfillmentType.toLowerCase() === 'delivery'
-                                        ? styles.fulfillmentInfoTextDelivery
-                                        : styles.fulfillmentInfoTextPickup,
-                                ]}>
-                                    {fulfillmentType.toLowerCase() === 'delivery' ? '🚚 Delivery' : '🏪 Pickup'}
-                                </Text>
-                            </View>
-                            {fulfillmentType.toLowerCase() === 'delivery' && deliveryAddress ? (
-                                <View style={styles.deliveryAddressCard}>
-                                    <Text style={styles.deliveryAddressLabel}>Delivery Address</Text>
-                                    <Text style={styles.deliveryAddressText}>{deliveryAddress}</Text>
+                            <Text style={styles.label}>Order Number</Text>
+                            <TextInput
+                                style={styles.readOnlyInput}
+                                value={orderNumber}
+                                editable={false}
+                            />
+                        </View>
+
+                        <View style={styles.formGroup}>
+                            <Text style={styles.label}>Product ID *</Text>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Enter product ID"
+                                value={productId}
+                                onChangeText={setProductId}
+                                editable={!isLoading}
+                            />
+                            {productsLoading ? (
+                                <Text style={styles.helperText}>Loading live stock...</Text>
+                            ) : selectedProduct ? (
+                                <View style={styles.stockInfoCard}>
+                                    <Text style={styles.stockInfoTitle}>{selectedProduct.name}</Text>
+                                    <Text style={styles.stockInfoText}>Available for this order: {availableStock}</Text>
+                                    <Text style={styles.stockInfoText}>Unit price: ₱{selectedProduct.price.toFixed(2)}</Text>
                                 </View>
+                            ) : productId.trim() ? (
+                                <Text style={styles.errorText}>No matching product found for this ID.</Text>
+                            ) : null}
+                            {productLookupError ? (
+                                <Text style={styles.errorText}>{productLookupError}</Text>
                             ) : null}
                         </View>
-                    ) : null}
 
-                    <View style={styles.formGroup}>
-                        <Text style={styles.label}>Quantity *</Text>
-                        <TextInput
-                            style={styles.input}
-                            placeholder="1"
-                            value={quantity}
-                            onChangeText={setQuantity}
-                            keyboardType="number-pad"
-                            editable={!isLoading}
-                        />
-                        {selectedProduct ? (
-                            <Text style={styles.helperText}>
-                                Maximum allowed right now: {availableStock} item(s).
-                            </Text>
-                        ) : null}
-                    </View>
-
-                    <View style={styles.formGroup}>
-                        <Text style={styles.label}>Total Amount (₱)</Text>
-                        <TextInput
-                            style={styles.readOnlyInput}
-                            placeholder="0.00"
-                            value={computedTotalAmount}
-                            keyboardType="decimal-pad"
-                            editable={false}
-                        />
-                    </View>
-
-                    {canEditStatus ? (
                         <View style={styles.formGroup}>
-                            <Text style={styles.label}>Status</Text>
-                            <View style={styles.statusOptionsContainer}>
-                                {statusOptions.map((option) => (
-                                    <TouchableOpacity
-                                        key={option}
-                                        style={[
-                                            styles.statusChip,
-                                            status === option && styles.statusChipActive,
-                                        ]}
-                                        onPress={() => setStatus(option)}
-                                        disabled={isLoading}
-                                    >
-                                        <Text
-                                            style={[
-                                                styles.statusChipText,
-                                                status === option && styles.statusChipTextActive,
-                                            ]}
-                                        >
-                                            {option}
-                                        </Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
+                            <Text style={styles.label}>Customer Name *</Text>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Enter customer name"
+                                value={customerName}
+                                onChangeText={setCustomerName}
+                                editable={!isLoading}
+                            />
                         </View>
-                    ) : null}
 
-                    <TouchableOpacity
-                        style={[styles.submitBtn, isLoading && styles.submitBtnDisabled]}
-                        onPress={handleUpdateOrder}
-                        disabled={isLoading}
-                    >
-                        <Text style={styles.submitBtnText}>
-                            {isLoading ? '⏳ Updating...' : '✅ Update Order'}
-                        </Text>
-                    </TouchableOpacity>
+                        <View style={styles.formGroup}>
+                            <Text style={styles.label}>Customer Email</Text>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="customer@email.com"
+                                value={customerEmail}
+                                onChangeText={setCustomerEmail}
+                                keyboardType="email-address"
+                                editable={!isLoading}
+                            />
+                        </View>
 
-                    <TouchableOpacity
-                        style={styles.cancelBtn}
-                        onPress={() => navigation.goBack()}
-                        disabled={isLoading}
-                    >
-                        <Text style={styles.cancelBtnText}>Cancel</Text>
-                    </TouchableOpacity>
-                </View>
+                        {fulfillmentType ? (
+                            <View style={styles.formGroup}>
+                                <Text style={styles.label}>Fulfillment Type</Text>
+                                <View style={[
+                                    styles.fulfillmentInfoCard,
+                                    fulfillmentType.toLowerCase() === 'delivery'
+                                        ? styles.fulfillmentInfoCardDelivery
+                                        : styles.fulfillmentInfoCardPickup,
+                                ]}>
+                                    <Text style={[
+                                        styles.fulfillmentInfoText,
+                                        fulfillmentType.toLowerCase() === 'delivery'
+                                            ? styles.fulfillmentInfoTextDelivery
+                                            : styles.fulfillmentInfoTextPickup,
+                                    ]}>
+                                        {fulfillmentType.toLowerCase() === 'delivery' ? '🚚 Delivery' : '🏪 Pickup'}
+                                    </Text>
+                                </View>
+                                {fulfillmentType.toLowerCase() === 'delivery' && deliveryAddress ? (
+                                    <View style={styles.deliveryAddressCard}>
+                                        <Text style={styles.deliveryAddressLabel}>Delivery Address</Text>
+                                        <Text style={styles.deliveryAddressText}>{deliveryAddress}</Text>
+                                    </View>
+                                ) : null}
+                            </View>
+                        ) : null}
+
+                        <View style={styles.formGroup}>
+                            <Text style={styles.label}>Quantity *</Text>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="1"
+                                value={quantity}
+                                onChangeText={setQuantity}
+                                keyboardType="number-pad"
+                                editable={!isLoading}
+                            />
+                            {selectedProduct ? (
+                                <Text style={styles.helperText}>
+                                    Maximum allowed right now: {availableStock} item(s).
+                                </Text>
+                            ) : null}
+                        </View>
+
+                        <View style={styles.formGroup}>
+                            <Text style={styles.label}>Total Amount (₱)</Text>
+                            <TextInput
+                                style={styles.readOnlyInput}
+                                placeholder="0.00"
+                                value={computedTotalAmount}
+                                keyboardType="decimal-pad"
+                                editable={false}
+                            />
+                        </View>
+
+                        {canEditStatus ? (
+                            <View style={styles.formGroup}>
+                                <Text style={styles.label}>Status</Text>
+                                <View style={styles.statusOptionsContainer}>
+                                    {statusOptions.map((option) => (
+                                        <TouchableOpacity
+                                            key={option}
+                                            style={[
+                                                styles.statusChip,
+                                                status === option && styles.statusChipActive,
+                                            ]}
+                                            onPress={() => setStatus(option)}
+                                            disabled={isLoading}
+                                        >
+                                            <Text
+                                                style={[
+                                                    styles.statusChipText,
+                                                    status === option && styles.statusChipTextActive,
+                                                ]}
+                                            >
+                                                {option}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
+                            </View>
+                        ) : null}
+
+                        <TouchableOpacity
+                            style={[styles.submitBtn, isLoading && styles.submitBtnDisabled]}
+                            onPress={handleUpdateOrder}
+                            disabled={isLoading}
+                        >
+                            <Text style={styles.submitBtnText}>
+                                {isLoading ? '⏳ Updating...' : '✅ Update Order'}
+                            </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={styles.cancelBtn}
+                            onPress={() => navigation.goBack()}
+                            disabled={isLoading}
+                        >
+                            <Text style={styles.cancelBtnText}>Cancel</Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
             </ScrollView>
         </View>
     );
@@ -396,6 +419,29 @@ const styles = StyleSheet.create<{ [key: string]: ViewStyle | TextStyle }>({
         shadowOpacity: 0.1,
         shadowRadius: 4,
         elevation: 3,
+    },
+    lockedCard: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
+        padding: 24,
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    lockedTitle: {
+        fontSize: 22,
+        fontWeight: '700',
+        color: '#1F2937',
+    },
+    lockedText: {
+        fontSize: 14,
+        color: '#4B5563',
+        lineHeight: 22,
+        textAlign: 'center',
+        marginTop: 12,
     },
     formTitle: {
         fontSize: 24,

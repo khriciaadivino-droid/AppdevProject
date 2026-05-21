@@ -1,5 +1,6 @@
 const express = require('express');
 require('dotenv').config();
+const fs = require('fs');
 const path = require('path');
 
 const sequelize = require('./db');
@@ -19,19 +20,23 @@ app.use((req, res, next) => {
   next();
 });
 
-const authRoutes = require('./authRoutes');
-const categoryRoutes = require('./categoryRoutes');
-const productRoutes = require('./productRoutes');
-const petRoutes = require('./petRoutes');
-const orderRoutes = require('./orderRoutes');
-const stockRoutes = require('./stockRoutes');
+const mountRoute = routeFile => {
+  const routePath = path.join(__dirname, routeFile);
 
-app.use('/api', authRoutes);
-app.use('/api', categoryRoutes);
-app.use('/api', productRoutes);
-app.use('/api', petRoutes);
-app.use('/api', orderRoutes);
-app.use('/api', stockRoutes);
+  if (!fs.existsSync(routePath)) {
+    console.warn(`⚠️ Skipping missing route module: ${routeFile}`);
+    return;
+  }
+
+  try {
+    app.use('/api', require(`./${routeFile}`));
+  } catch (error) {
+    console.warn(`⚠️ Skipping route module ${routeFile}: ${error.message}`);
+  }
+};
+
+['authRoutes.js', 'petRoutes.js', 'orderRoutes.js', 'categoryRoutes.js', 'productRoutes.js', 'stockRoutes.js']
+  .forEach(mountRoute);
 
 const PORT = process.env.PORT || 9000;
 

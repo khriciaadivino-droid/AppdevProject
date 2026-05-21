@@ -4,6 +4,7 @@
  */
 
 import { apiGet, apiPost } from './client';
+import { API_CONFIG } from './config';
 
 // Type definitions
 export interface AuthUser {
@@ -29,6 +30,8 @@ export interface RegisterCredentials {
     email: string;
     password: string;
     username?: string;
+    name?: string;
+    fullName?: string;
     firstName?: string;
     lastName?: string;
 }
@@ -77,7 +80,7 @@ export async function authLogin(credentials: LoginCredentials): Promise<ApiAuthR
     console.log('🔐 [Auth] Login attempt:', credentials.email);
 
     try {
-        const response = await apiPost('/api/login', {
+        const response = await apiPost(API_CONFIG.ENDPOINTS.LOGIN, {
             email: credentials.email,
             password: credentials.password,
         });
@@ -128,8 +131,8 @@ export async function getGoogleAuthConfig(): Promise<GoogleAuthConfigResponse> {
 
 export async function authGoogleLogin(credentials: GoogleLoginCredentials): Promise<ApiAuthResponse> {
     try {
-        const response = await apiPost('/api/google-login', {
-            idToken: credentials.idToken,
+        const response = await apiPost(API_CONFIG.ENDPOINTS.GOOGLE_LOGIN, {
+            firebaseToken: credentials.idToken,
         });
 
         return {
@@ -158,12 +161,20 @@ export async function authRegister(
     console.log('📝 [Auth] Registration attempt:', credentials.email);
 
     try {
-        const response = await apiPost('/api/register', {
+        const username = credentials.username?.trim()
+            || credentials.fullName?.trim()
+            || credentials.name?.trim()
+            || [credentials.firstName, credentials.lastName]
+                .filter((value): value is string => Boolean(value?.trim()))
+                .join(' ')
+                .trim()
+            || credentials.email.split('@')[0];
+
+        const response = await apiPost(API_CONFIG.ENDPOINTS.REGISTER, {
+            username,
+            name: username,
             email: credentials.email,
             password: credentials.password,
-            username: credentials.username || credentials.firstName || credentials.email.split('@')[0],
-            firstName: credentials.firstName || '',
-            lastName: credentials.lastName || '',
         });
 
         console.log('📝 [Auth] Raw response:', response);

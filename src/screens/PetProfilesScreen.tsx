@@ -7,13 +7,16 @@ import {
     ScrollView,
     Alert,
     ActivityIndicator,
+    Image,
     ViewStyle,
     TextStyle,
+    ImageStyle,
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { RootState } from '../app/reducers';
 import * as types from '../app/actions';
+import { getBaseUrls } from '../app/api/config';
 import DashboardHeader from '../components/DashboardHeader';
 import DashboardSidebar from '../components/DashboardSidebar';
 import { SCREENS } from '../utils/routes';
@@ -25,6 +28,8 @@ interface PetItem {
     breed?: string;
     age?: number;
     ownerName?: string;
+    image?: string;
+    image_url?: string;
 }
 
 interface SummaryCardProps {
@@ -76,28 +81,47 @@ const SummaryCard: FC<SummaryCardProps> = ({ icon, label, value, accent }) => (
     </View>
 );
 
-const PetRow: FC<PetRowProps> = ({ pet, onEdit, onDelete }) => (
-    <View style={styles.petRow}>
-        <View style={styles.petAvatar}>
-            <Text style={styles.petAvatarText}>🐾</Text>
-        </View>
+const getPetImageUri = (pet: PetItem): string | null => {
+    if (pet.image_url) {
+        const base = getBaseUrls()[0] ?? 'http://localhost:8000';
+        return base + pet.image_url;
+    }
+    if (pet.image) {
+        const base = getBaseUrls()[0] ?? 'http://localhost:8000';
+        return base + '/uploads/pets/' + pet.image;
+    }
+    return null;
+};
 
-        <View style={styles.petInfoWrap}>
-            <Text style={styles.petName}>{pet.name || 'Unnamed pet'}</Text>
-            <Text style={styles.petMeta}>{formatSpecies(pet.species)} · {getBreed(pet)}</Text>
-            <Text style={styles.petMeta}>{getAgeLabel(pet)} · Owner: {getOwnerName(pet)}</Text>
-        </View>
+const PetRow: FC<PetRowProps> = ({ pet, onEdit, onDelete }) => {
+    const imageUri = getPetImageUri(pet);
+    return (
+        <View style={styles.petRow}>
+            {imageUri ? (
+                <Image source={{ uri: imageUri }} style={styles.petAvatarImage} />
+            ) : (
+                <View style={styles.petAvatar}>
+                    <Text style={styles.petAvatarText}>🐾</Text>
+                </View>
+            )}
 
-        <View style={styles.rowActions}>
-            <TouchableOpacity style={styles.editButton} onPress={() => onEdit(pet)}>
-                <Text style={styles.editButtonText}>Edit</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.deleteButton} onPress={() => onDelete(pet.id)}>
-                <Text style={styles.deleteButtonText}>Delete</Text>
-            </TouchableOpacity>
+            <View style={styles.petInfoWrap}>
+                <Text style={styles.petName}>{pet.name || 'Unnamed pet'}</Text>
+                <Text style={styles.petMeta}>{formatSpecies(pet.species)} · {getBreed(pet)}</Text>
+                <Text style={styles.petMeta}>{getAgeLabel(pet)}</Text>
+            </View>
+
+            <View style={styles.rowActions}>
+                <TouchableOpacity style={styles.editButton} onPress={() => onEdit(pet)}>
+                    <Text style={styles.editButtonText}>Edit</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.deleteButton} onPress={() => onDelete(pet.id)}>
+                    <Text style={styles.deleteButtonText}>Delete</Text>
+                </TouchableOpacity>
+            </View>
         </View>
-    </View>
-);
+    );
+};
 
 const PetProfilesScreen: FC = () => {
     const navigation = useNavigation<any>();
@@ -252,7 +276,7 @@ const PetProfilesScreen: FC = () => {
     );
 };
 
-const styles = StyleSheet.create<{ [key: string]: ViewStyle | TextStyle }>({
+const styles = StyleSheet.create<{ [key: string]: ViewStyle | TextStyle | ImageStyle }>({
     container: { flex: 1, backgroundColor: '#F3F4F6' },
     loadingContainer: {
         flex: 1,
@@ -394,6 +418,12 @@ const styles = StyleSheet.create<{ [key: string]: ViewStyle | TextStyle }>({
         backgroundColor: '#E5E7EB',
         justifyContent: 'center',
         alignItems: 'center',
+        marginBottom: 12,
+    },
+    petAvatarImage: {
+        width: 56,
+        height: 56,
+        borderRadius: 14,
         marginBottom: 12,
     },
     petAvatarText: {

@@ -36,6 +36,7 @@ const normalizeCreateOrderPayload = (data: any): Record<string, any> => {
         notes: data?.notes,
         fulfillment_type: data?.fulfillment_type ?? data?.fulfillmentType,
         delivery_address: data?.delivery_address ?? data?.deliveryAddress,
+        payment_method: data?.payment_method ?? data?.paymentMethod,
     });
 };
 

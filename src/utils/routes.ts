@@ -6,6 +6,7 @@ export const SCREENS = {
     LOGIN: 'Login',
     REGISTER: 'Register',
     DASHBOARD_USER: 'DashboardUser',
+    NOTIFICATIONS: 'Notifications',
     PET_PROFILES: 'PetProfiles',
     ADD_PET: 'AddPet',
     EDIT_PET: 'EditPet',
@@ -13,6 +14,7 @@ export const SCREENS = {
     ADD_ORDER: 'AddOrder',
     EDIT_ORDER: 'EditOrder',
     ADD_PRODUCT: 'AddProduct',
+    PRODUCTS: 'Products',
     CART: 'Cart',
     CHECKOUT: 'Checkout',
 } as const;

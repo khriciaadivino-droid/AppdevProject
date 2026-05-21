@@ -115,6 +115,10 @@ const getStatusColor = (status?: string): { bg: string; text: string } => {
     }
 };
 
+const isLockedOrderStatus = (status?: string): boolean => {
+    return ['completed', 'delivered'].includes((status || '').toLowerCase());
+};
+
 const summaryToneStyles = {
     blue: { bg: '#DBEAFE', text: '#1D4ED8' },
     amber: { bg: '#FEF3C7', text: '#B45309' },
@@ -140,6 +144,7 @@ const OrderRow: FC<OrderRowProps> = ({ order, onEdit, onDelete }) => {
     const fulfillmentType: string = (order as any).fulfillmentType || (order as any).fulfillment_type || '';
     const deliveryAddress: string = (order as any).deliveryAddress || (order as any).delivery_address || '';
     const isDelivery = fulfillmentType.toLowerCase() === 'delivery';
+    const isLocked = isLockedOrderStatus(order.status);
 
     return (
         <View style={styles.orderRow}>
@@ -185,10 +190,19 @@ const OrderRow: FC<OrderRowProps> = ({ order, onEdit, onDelete }) => {
             ) : null}
 
             <View style={styles.rowActions}>
-                <TouchableOpacity style={styles.editButton} onPress={() => onEdit(order)}>
-                    <Text style={styles.editButtonText}>Edit</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.deleteButton} onPress={() => onDelete(order.id)}>
+                {isLocked ? (
+                    <View style={styles.lockedNotice}>
+                        <Text style={styles.lockedNoticeText}>Completed orders cannot be edited.</Text>
+                    </View>
+                ) : (
+                    <TouchableOpacity style={styles.editButton} onPress={() => onEdit(order)}>
+                        <Text style={styles.editButtonText}>Edit</Text>
+                    </TouchableOpacity>
+                )}
+                <TouchableOpacity
+                    style={[styles.deleteButton, isLocked && styles.deleteButtonWide]}
+                    onPress={() => onDelete(order.id)}
+                >
                     <Text style={styles.deleteButtonText}>Delete</Text>
                 </TouchableOpacity>
             </View>
@@ -250,6 +264,11 @@ const OrdersScreen: FC = () => {
     };
 
     const handleEdit = (order: OrderItem): void => {
+        if (isLockedOrderStatus(order.status)) {
+            Alert.alert('Order locked', 'Completed orders can no longer be edited.');
+            return;
+        }
+
         navigation.navigate(SCREENS.EDIT_ORDER, { orderId: order.id, order });
     };
 
@@ -289,7 +308,7 @@ const OrdersScreen: FC = () => {
                 <View style={styles.heroCard}>
                     <Text style={styles.heroTitle}>Orders</Text>
                     <Text style={styles.heroSubtitle}>
-                        View, update, and remove orders backed by your live API.
+
                     </Text>
                     <View style={styles.heroActions}>
                         <TouchableOpacity style={styles.primaryButton} onPress={handleAdd}>
@@ -314,7 +333,7 @@ const OrdersScreen: FC = () => {
                     <View style={styles.sectionHeader}>
                         <Text style={styles.sectionTitle}>Order List</Text>
                         <Text style={styles.sectionSubtitle}>
-                            Edit or delete any order without leaving the live list.
+
                         </Text>
                     </View>
 
@@ -339,7 +358,7 @@ const OrdersScreen: FC = () => {
                         <View style={styles.emptyStateCard}>
                             <Text style={styles.emptyStateTitle}>No orders yet</Text>
                             <Text style={styles.emptyStateText}>
-                                Create your first order and it will appear here automatically.
+
                             </Text>
                             <TouchableOpacity style={styles.primaryButton} onPress={handleAdd}>
                                 <Text style={styles.primaryButtonText}>Create First Order</Text>
@@ -614,10 +633,26 @@ const styles = StyleSheet.create<{ [key: string]: ViewStyle | TextStyle }>({
         paddingVertical: 8,
         alignItems: 'center',
     },
+    deleteButtonWide: {
+        flexGrow: 1,
+    },
     deleteButtonText: {
         fontSize: 13,
         fontWeight: '700',
         color: '#B91C1C',
+    },
+    lockedNotice: {
+        flex: 1,
+        borderRadius: 10,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        backgroundColor: '#ECFDF5',
+        justifyContent: 'center',
+    },
+    lockedNoticeText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#065F46',
     },
     emptyStateCard: {
         backgroundColor: '#F9FAFB',

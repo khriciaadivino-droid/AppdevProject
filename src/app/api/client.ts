@@ -3,59 +3,9 @@
  * Handles all API requests with fallback URL support, timeouts, and error handling
  */
 
-import { NativeModules, Platform } from 'react-native';
+import { API_CONFIG, getBaseUrls } from './config';
 
-const API_PORT = 8000;
 let preferredBaseUrl: string | null = null;
-
-const getMetroHost = (): string | null => {
-    const scriptURL = NativeModules?.SourceCode?.scriptURL;
-
-    if (!scriptURL) {
-        return null;
-    }
-
-    try {
-        const parsedHost = scriptURL.match(/^https?:\/\/([^/:]+)/i)?.[1];
-
-        return parsedHost ?? null;
-    } catch {
-        return null;
-    }
-};
-
-const getBaseUrls = (): string[] => {
-    const urls = new Set<string>();
-    const metroHost = getMetroHost();
-
-    if (metroHost) {
-        urls.add(`http://${metroHost}:${API_PORT}`);
-    }
-
-    if (Platform.OS === 'android') {
-        urls.add(`http://10.0.2.2:${API_PORT}`);
-        urls.add(`http://10.0.3.2:${API_PORT}`);
-    }
-
-    urls.add('http://192.168.254.104:8000');
-    urls.add('http://localhost:8000');
-    urls.add('http://127.0.0.1:8000');
-
-    return Array.from(urls);
-};
-
-const API_CONFIG = {
-    TIMEOUT: 12000,
-    FALLBACK_TIMEOUT: 4000,
-    DEBUG: true,
-    ENDPOINTS: {
-        LOGIN: '/api/login',
-        REGISTER: '/api/register',
-        VERIFY_EMAIL: '/api/verify-email',
-        FORGOT_PASSWORD: '/api/forgot-password',
-        RESET_PASSWORD: '/api/reset-password',
-    },
-};
 
 console.log('🔧 [API Client] Initialized with BASE_URLS:', getBaseUrls());
 
@@ -102,17 +52,18 @@ const fetchWithTimeout = async (
  * Build full URL from endpoint
  */
 const buildUrl = (baseUrl: string, endpoint: string): string => {
+    const base = baseUrl.replace(/\/$/, '');
     const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
 
     if (normalizedEndpoint.startsWith('/api/')) {
-        return `${baseUrl}${normalizedEndpoint}`;
+        return `${base}${normalizedEndpoint}`;
     }
 
     if (normalizedEndpoint.startsWith('/mobile/')) {
-        return `${baseUrl}/api${normalizedEndpoint}`;
+        return `${base}/api${normalizedEndpoint}`;
     }
 
-    return `${baseUrl}/api${normalizedEndpoint}`;
+    return `${base}/api${normalizedEndpoint}`;
 };
 
 const getOrderedBaseUrls = (): string[] => {
@@ -159,7 +110,9 @@ export const apiClient = async <T = any>(
     for (const baseUrl of baseUrls) {
         try {
             const fullUrl = buildUrl(baseUrl, endpoint);
-            const timeoutMs = preferredBaseUrl === baseUrl
+            const isPreferred = preferredBaseUrl === baseUrl;
+            const isFirstFallback = preferredBaseUrl === null && baseUrl === baseUrls[0];
+            const timeoutMs = (isPreferred || isFirstFallback)
                 ? API_CONFIG.TIMEOUT
                 : API_CONFIG.FALLBACK_TIMEOUT;
 
