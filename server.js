@@ -1,7 +1,9 @@
+const http = require('http');
 const express = require('express');
 require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
+const { initWebSocket } = require('./websocket');
 
 const sequelize = require('./db');
 
@@ -46,8 +48,12 @@ const startServer = async () => {
     await sequelize.sync();
     console.log('🟢 MySQL connected');
 
-    app.listen(PORT, '0.0.0.0', () => {
+    const server = http.createServer(app);
+    initWebSocket(server);
+
+    server.listen(PORT, '0.0.0.0', () => {
       console.log(`🟢 Server running on http://0.0.0.0:${PORT}`);
+      console.log(`🟢 WebSocket available at ws://0.0.0.0:${PORT}/ws`);
       console.log(`🟢 Access from other devices at: http://192.168.254.107:${PORT}`);
     });
   } catch (error) {

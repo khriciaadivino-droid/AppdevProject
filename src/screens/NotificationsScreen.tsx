@@ -15,6 +15,7 @@ import DashboardHeader from '../components/DashboardHeader';
 import DashboardSidebar from '../components/DashboardSidebar';
 import { RootState } from '../app/reducers';
 import { extractNotifications, getNotifications, NotificationItem } from '../app/api/notification';
+import wsService, { WsEvent } from '../app/api/websocket';
 
 interface NotificationsScreenProps {
     navigation: any;
@@ -113,6 +114,7 @@ const NotificationsScreen: FC<NotificationsScreenProps> = () => {
     const [notifications, setNotifications] = useState<NotificationItem[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [wsConnected, setWsConnected] = useState(false);
 
     const loadNotifications = async (): Promise<void> => {
         if (!user?.token) {
@@ -143,9 +145,37 @@ const NotificationsScreen: FC<NotificationsScreenProps> = () => {
     };
 
     useEffect(() => {
-        if (isFocused) {
-            loadNotifications();
+        if (!isFocused || !user?.token) {
+            wsService.disconnect();
+            return;
         }
+
+        // Initial HTTP fetch so the list is populated before any WS events arrive
+        loadNotifications();
+
+        // Open (or re-use) the WebSocket connection
+        wsService.connect(user.token, setWsConnected);
+
+        // Prepend new events that arrive over the socket
+        const unsubscribe = wsService.subscribe((event: WsEvent) => {
+            if (event.type !== 'notification' || !event.data) return;
+
+            const item: NotificationItem = {
+                id: event.data.id ?? Date.now(),
+                action: event.data.action ?? null,
+                username: event.data.username ?? null,
+                target_data: event.data.target_data ?? null,
+                role: event.data.role ?? null,
+                timestamp: event.data.timestamp ?? null,
+            };
+
+            setNotifications((prev) => [item, ...prev]);
+        });
+
+        return () => {
+            unsubscribe();
+            wsService.disconnect();
+        };
     }, [isFocused, user?.token]);
 
     return (
@@ -162,7 +192,14 @@ const NotificationsScreen: FC<NotificationsScreenProps> = () => {
                 <View style={styles.panel}>
                     <View style={styles.panelHeader}>
                         <View>
-                            <Text style={styles.panelTitle}>Latest activity</Text>
+                            <View style={styles.panelTitleRow}>
+                                <Text style={styles.panelTitle}>Latest activity</Text>
+                                {wsConnected ? (
+                                    <View style={styles.liveBadge}>
+                                        <Text style={styles.liveBadgeText}>● LIVE</Text>
+                                    </View>
+                                ) : null}
+                            </View>
                             <Text style={styles.panelSubtitle}>Your most recent events are pulled from the server in real time.</Text>
                         </View>
 
@@ -250,7 +287,19 @@ const styles = StyleSheet.create<{ [key: string]: ViewStyle | TextStyle }>({
         justifyContent: 'space-between',
         gap: 12,
     },
+    panelTitleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
     panelTitle: { fontSize: 22, fontWeight: '800', color: '#111827' },
+    liveBadge: {
+        borderRadius: 8,
+        backgroundColor: '#DCFCE7',
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+    },
+    liveBadgeText: { fontSize: 10, fontWeight: '800', color: '#15803D' },
     panelSubtitle: { fontSize: 13, color: '#6B7280', marginTop: 4, maxWidth: 240 },
     refreshButton: {
         borderRadius: 14,

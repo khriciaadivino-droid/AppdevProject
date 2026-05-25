@@ -1,6 +1,7 @@
 const express = require('express');
 const Order = require('./Order');
 const Product = require('./Product');
+const { broadcast } = require('./websocket');
 
 const router = express.Router();
 
@@ -53,6 +54,17 @@ router.post('/orders', verifyToken, async (req, res) => {
             totalAmount,
             status,
         });
+        broadcast({
+            type: 'notification',
+            data: {
+                id: Date.now(),
+                action: 'CREATE',
+                target_data: `Order #${order.orderNumber}`,
+                username: order.customerName || 'Customer',
+                role: 'ROLE_USER',
+                timestamp: new Date().toISOString(),
+            },
+        });
         res.status(201).json({ success: true, data: order });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -76,6 +88,17 @@ router.put('/orders/:id', verifyToken, async (req, res) => {
             totalAmount,
             status,
         });
+        broadcast({
+            type: 'notification',
+            data: {
+                id: Date.now(),
+                action: 'ORDER_STATUS',
+                target_data: `Order #${order.orderNumber}`,
+                username: order.customerName || 'Customer',
+                role: 'ROLE_USER',
+                timestamp: new Date().toISOString(),
+            },
+        });
         res.json({ success: true, data: order });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -90,6 +113,17 @@ router.delete('/orders/:id', verifyToken, async (req, res) => {
             return res.status(404).json({ success: false, message: 'Order not found' });
         }
         await order.destroy();
+        broadcast({
+            type: 'notification',
+            data: {
+                id: Date.now(),
+                action: 'DELETE',
+                target_data: `Order #${order.orderNumber}`,
+                username: 'Admin',
+                role: 'ROLE_ADMIN',
+                timestamp: new Date().toISOString(),
+            },
+        });
         res.json({ success: true, message: 'Order deleted' });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });

@@ -1,5 +1,6 @@
 const express = require('express');
 const Pet = require('./Pet');
+const { broadcast } = require('./websocket');
 
 const router = express.Router();
 
@@ -49,6 +50,17 @@ router.post('/pets', verifyToken, async (req, res) => {
             image,
             isPetOfTheMonth,
         });
+        broadcast({
+            type: 'notification',
+            data: {
+                id: Date.now(),
+                action: 'CREATE',
+                target_data: pet.name,
+                username: pet.ownerName || 'Owner',
+                role: 'ROLE_USER',
+                timestamp: new Date().toISOString(),
+            },
+        });
         res.status(201).json({ success: true, data: pet });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -73,6 +85,17 @@ router.put('/pets/:id', verifyToken, async (req, res) => {
             image,
             isPetOfTheMonth,
         });
+        broadcast({
+            type: 'notification',
+            data: {
+                id: Date.now(),
+                action: 'UPDATE',
+                target_data: pet.name,
+                username: pet.ownerName || 'Owner',
+                role: 'ROLE_USER',
+                timestamp: new Date().toISOString(),
+            },
+        });
         res.json({ success: true, data: pet });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -87,6 +110,17 @@ router.delete('/pets/:id', verifyToken, async (req, res) => {
             return res.status(404).json({ success: false, message: 'Pet not found' });
         }
         await pet.destroy();
+        broadcast({
+            type: 'notification',
+            data: {
+                id: Date.now(),
+                action: 'DELETE',
+                target_data: pet.name,
+                username: 'Admin',
+                role: 'ROLE_ADMIN',
+                timestamp: new Date().toISOString(),
+            },
+        });
         res.json({ success: true, message: 'Pet deleted' });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });

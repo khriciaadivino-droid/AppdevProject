@@ -2,6 +2,7 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const admin = require('firebase-admin');
+const { broadcast } = require('./websocket');
 
 const User = require('./User');
 
@@ -136,6 +137,18 @@ router.post('/auth/login', async (req, res) => {
 
     user.lastLoginAt = new Date();
     await user.save();
+
+    broadcast({
+      type: 'notification',
+      data: {
+        id: Date.now(),
+        action: 'LOGIN',
+        target_data: null,
+        username: user.name,
+        role: (user.roles || [])[0] || 'ROLE_USER',
+        timestamp: new Date().toISOString(),
+      },
+    });
 
     return res.status(200).json({
       success: true,
