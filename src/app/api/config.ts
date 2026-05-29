@@ -2,11 +2,10 @@ import { NativeModules, Platform } from 'react-native';
 
 // Option A: point this at your Railway *Node API* service URL (not the PawStuff landing site).
 // After deploying `node server.js` on Railway, paste the new service URL here.
-// Store release + Railway "observant-imagination" service (fix deploy via Dockerfile in railway.toml).
-const REMOTE_BASE_URL = 'https://observant-imagination-staging-336e.up.railway.app';
-/** Tried when the primary returns 502/503/504 or non-JSON. */
+// appdevproject-staging is the healthy Node API; observant-imagination is tried as fallback for store builds.
+const REMOTE_BASE_URL = 'https://appdevproject-staging.up.railway.app';
 const REMOTE_API_FALLBACK_URLS = [
-    'https://appdevproject-staging.up.railway.app',
+    'https://observant-imagination-staging-336e.up.railway.app',
     'https://midterm-project-staging.up.railway.app',
 ] as const;
 const ENABLE_LOCAL_API_FALLBACKS = false;

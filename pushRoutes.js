@@ -1,6 +1,6 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
-const admin = require('firebase-admin');
+const { admin, initFirebaseAdmin } = require('./firebaseAdmin');
 
 const DeviceToken = require('./DeviceToken');
 
@@ -8,30 +8,9 @@ const router = express.Router();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'change-this-secret-in-production';
 
-const parseFirebaseServiceAccount = () => {
-  const raw = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw);
-  } catch {
-    try {
-      return JSON.parse(Buffer.from(raw, 'base64').toString('utf8'));
-    } catch {
-      return null;
-    }
-  }
-};
-
 const ensureFirebaseAdmin = () => {
   if (admin.apps.length) return true;
-  const serviceAccount = parseFirebaseServiceAccount();
-  if (!serviceAccount) return false;
-  try {
-    admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
-    return true;
-  } catch {
-    return false;
-  }
+  return Boolean(initFirebaseAdmin());
 };
 
 const requireAuth = (req, res, next) => {

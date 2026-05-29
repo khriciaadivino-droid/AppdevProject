@@ -1,50 +1,12 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const admin = require('firebase-admin');
+const { admin, initFirebaseAdmin } = require('./firebaseAdmin');
 const { broadcast } = require('./websocket');
 
 const User = require('./User');
 
-const parseFirebaseServiceAccount = () => {
-  const raw = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
-  if (!raw) return null;
-
-  const candidates = [String(raw).trim().replace(/^\uFEFF/, '')];
-  if (candidates[0].startsWith("'") && candidates[0].endsWith("'")) {
-    candidates.push(candidates[0].slice(1, -1));
-  }
-  if (candidates[0].startsWith('"') && candidates[0].endsWith('"')) {
-    candidates.push(candidates[0].slice(1, -1));
-  }
-
-  for (const value of candidates) {
-    try {
-      return JSON.parse(value);
-    } catch {
-      try {
-        return JSON.parse(Buffer.from(value, 'base64').toString('utf8'));
-      } catch {
-        /* try next candidate */
-      }
-    }
-  }
-  return null;
-};
-
-if (!admin.apps.length) {
-  const serviceAccount = parseFirebaseServiceAccount();
-  if (serviceAccount) {
-    try {
-      admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
-      console.log('✅ Firebase Admin initialized');
-    } catch (error) {
-      console.log('⚠️ Firebase Admin init failed:', error.message);
-    }
-  } else if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
-    console.log('⚠️ FIREBASE_SERVICE_ACCOUNT_KEY is set but is not valid JSON (or base64 JSON)');
-  }
-}
+initFirebaseAdmin();
 
 const router = express.Router();
 

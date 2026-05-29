@@ -13,6 +13,7 @@ process.on('uncaughtException', error => {
 });
 
 const app = express();
+app.set('trust proxy', 1);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -23,7 +24,13 @@ const healthPayload = () => ({
 });
 
 app.get('/api/health', (_req, res) => {
-  res.status(200).json(healthPayload());
+  let db = 'unknown';
+  try {
+    db = require('./db').getDialect();
+  } catch {
+    /* db not ready */
+  }
+  res.status(200).json({ ...healthPayload(), db });
 });
 
 app.get('/health', (_req, res) => {
@@ -98,6 +105,11 @@ const connectDatabase = async () => {
     }
   }
 };
+
+server.on('error', error => {
+  console.error('🔴 HTTP server error:', error.message);
+  process.exit(1);
+});
 
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`🟢 Server listening on http://0.0.0.0:${PORT} (PORT=${process.env.PORT})`);

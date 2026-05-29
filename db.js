@@ -1,14 +1,11 @@
 const { Sequelize } = require('sequelize');
 
-// Railway: link MySQL plugin — MYSQLHOST/DATABASE_URL are injected automatically.
-// Set USE_MYSQL=true explicitly, or leave unset to auto-use MySQL when Railway vars exist.
 const explicitMysql = process.env.USE_MYSQL === 'true';
 const explicitSqlite = process.env.USE_MYSQL === 'false';
 
 const RAILWAY_MYSQL_INTERNAL = 'mysql.railway.internal';
 const DOUBLED_INTERNAL = RAILWAY_MYSQL_INTERNAL + RAILWAY_MYSQL_INTERNAL;
 
-/** Fixes duplicated host values from mis-pasted Railway reference vars. */
 const normalizeMysqlHost = (host) => {
   if (!host) return host;
   let h = String(host).trim();
@@ -77,8 +74,35 @@ const mysqlUrlHost = (() => {
 
 const hasMysqlUrl = Boolean(mysqlUrl) && isValidMysqlHost(mysqlUrlHost);
 const hasMysqlHost = isValidMysqlHost(mysqlHost);
+const hasMysqlCredentials = hasMysqlHost && Boolean(mysqlUser) && Boolean(mysqlPassword);
 
-let useMySQL = !explicitSqlite && (explicitMysql || hasMysqlUrl || hasMysqlHost);
+const hasRailwayMysqlBundle =
+  hasMysqlHost && Boolean(mysqlUser) && Boolean(mysqlPassword);
+
+let useMySQL =
+  !explicitSqlite &&
+  (explicitMysql || hasMysqlUrl || hasMysqlCredentials || hasRailwayMysqlBundle);
+
+if (explicitSqlite && process.env.RAILWAY_ENVIRONMENT) {
+  console.warn(
+    '⚠️ USE_MYSQL=false — using SQLite. Remove USE_MYSQL or set USE_MYSQL=true to use linked MySQL.'
+  );
+}
+
+if (
+  !explicitSqlite &&
+  !useMySQL &&
+  process.env.RAILWAY_ENVIRONMENT &&
+  !process.env.MYSQLHOST &&
+  !process.env.MYSQL_HOST &&
+  !rawMysqlUrl
+) {
+  console.warn(
+    '⚠️ No MySQL variables on this service. In Railway → observant-imagination → Variables, add:\n' +
+      '   MYSQLHOST=${{MySQL.MYSQLHOST}} MYSQLPORT=${{MySQL.MYSQLPORT}} MYSQLUSER=${{MySQL.MYSQLUSER}}\n' +
+      '   MYSQLPASSWORD=${{MySQL.MYSQLPASSWORD}} MYSQLDATABASE=${{MySQL.MYSQLDATABASE}}'
+  );
+}
 
 if (
   !explicitSqlite &&
@@ -87,7 +111,7 @@ if (
   String(rawMysqlUrl || mysqlHost).includes(RAILWAY_MYSQL_INTERNAL)
 ) {
   console.warn(
-    '⚠️ MySQL host/URL is misconfigured (duplicate mysql.railway.internal). Using SQLite. Set MYSQL_HOST to only ${{MySQL.MYSQLHOST}}.'
+    '⚠️ MySQL host duplicated (mysql.railway.internal twice). Fix MYSQL_HOST to only ${{MySQL.MYSQLHOST}}.'
   );
 }
 
@@ -96,12 +120,17 @@ let sequelize;
 if (useMySQL && mysqlUrl && hasMysqlUrl) {
   sequelize = new Sequelize(mysqlUrl, { dialect: 'mysql', logging: false });
 } else if (useMySQL && hasMysqlHost) {
-  sequelize = new Sequelize(mysqlDatabase || 'railway', mysqlUser || 'root', mysqlPassword || '', {
-    host: mysqlHost,
-    port: mysqlPort,
-    dialect: 'mysql',
-    logging: false,
-  });
+  sequelize = new Sequelize(
+    mysqlDatabase || 'railway',
+    mysqlUser || 'root',
+    mysqlPassword || '',
+    {
+      host: mysqlHost,
+      port: mysqlPort,
+      dialect: 'mysql',
+      logging: false,
+    }
+  );
 } else {
   useMySQL = false;
   const storage =
@@ -111,6 +140,15 @@ if (useMySQL && mysqlUrl && hasMysqlUrl) {
     dialect: 'sqlite',
     storage,
     logging: false,
+  });
+}
+
+if (process.env.RAILWAY_ENVIRONMENT) {
+  console.log('🔧 DB env present:', {
+    USE_MYSQL: process.env.USE_MYSQL ?? '(unset)',
+    MYSQLHOST: Boolean(process.env.MYSQLHOST),
+    MYSQL_HOST: Boolean(process.env.MYSQL_HOST),
+    DATABASE_URL: Boolean(rawMysqlUrl),
   });
 }
 

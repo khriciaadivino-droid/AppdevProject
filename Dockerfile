@@ -11,7 +11,7 @@ COPY package.api.json ./package.json
 RUN npm install --omit=dev \
   && npm rebuild sqlite3 --build-from-source
 
-COPY server.js websocket.js db.js User.js DeviceToken.js authRoutes.js pushRoutes.js ./
+COPY server.js websocket.js db.js firebaseAdmin.js User.js DeviceToken.js authRoutes.js pushRoutes.js ./
 COPY petRoutes.js Pet.js ./
 
 RUN mkdir -p /app/data
