@@ -1,0 +1,11 @@
+# Railway deploys the Node/Express API (not the React Native Metro bundler).
+# Create a NEW service in Railway linked to this repo, then set env vars from .env.example.
+
+[build]
+builder = "NIXPACKS"
+
+[deploy]
+startCommand = "node server.js"
+healthcheckPath = "/api/health"
+healthcheckTimeout = 300
+restartPolicyType = "ON_FAILURE"

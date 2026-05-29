@@ -50,7 +50,7 @@ const startServer = async () => {
   try {
     await sequelize.authenticate();
     await sequelize.sync();
-    console.log('🟢 MySQL connected');
+    console.log(`🟢 Database connected (${process.env.USE_MYSQL === 'true' ? 'MySQL' : 'SQLite'})`);
 
     const server = http.createServer(app);
     initWebSocket(server);
