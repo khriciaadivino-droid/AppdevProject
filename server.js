@@ -5,7 +5,12 @@ const fs = require('fs');
 const path = require('path');
 const { initWebSocket } = require('./websocket');
 
-const sequelize = require('./db');
+process.on('unhandledRejection', reason => {
+  console.error('Unhandled rejection:', reason);
+});
+process.on('uncaughtException', error => {
+  console.error('Uncaught exception:', error);
+});
 
 const app = express();
 
@@ -69,27 +74,28 @@ const PORT = Number(process.env.PORT) || 9000;
 const server = http.createServer(app);
 initWebSocket(server);
 
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`🟢 Server listening on http://0.0.0.0:${PORT}`);
-  console.log(`🟢 WebSocket at ws://0.0.0.0:${PORT}/ws`);
-});
-
 const connectDatabase = async () => {
+  const sequelize = require('./db');
+
   try {
     await sequelize.authenticate();
     const syncOptions =
       process.env.SEQUELIZE_SYNC_ALTER === 'true' ? { alter: true } : {};
     await sequelize.sync(syncOptions);
-    const dialect = sequelize.getDialect();
-    console.log(`🟢 Database connected (${dialect})`);
+    console.log(`🟢 Database connected (${sequelize.getDialect()})`);
   } catch (error) {
     console.error('Database connection error:', error.message);
     if (error.message?.includes('BLOB/TEXT') && error.message?.includes('token')) {
       console.error(
-        '💡 Drop the device_tokens table once in MySQL, then redeploy (schema was created with TEXT token).'
+        '💡 Run: DROP TABLE IF EXISTS device_tokens; then redeploy.'
       );
     }
   }
 };
 
-connectDatabase();
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`🟢 Server listening on http://0.0.0.0:${PORT} (PORT=${process.env.PORT})`);
+  console.log(`🟢 Health: http://0.0.0.0:${PORT}/api/health`);
+  console.log(`🟢 WebSocket at ws://0.0.0.0:${PORT}/ws`);
+  connectDatabase().catch(err => console.error('Database setup failed:', err.message));
+});

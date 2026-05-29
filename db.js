@@ -25,9 +25,19 @@ const normalizeMysqlUrl = (url) => {
     parsed.hostname = normalizeMysqlHost(parsed.hostname);
     return parsed.toString();
   } catch {
-    return url;
+    return url.replace(
+      /mysql\.railway\.internal(?:mysql\.railway\.internal)+/g,
+      RAILWAY_MYSQL_INTERNAL
+    );
   }
 };
+
+const isValidMysqlHost = (host) =>
+  Boolean(host) &&
+  host !== '127.0.0.1' &&
+  host !== 'localhost' &&
+  !host.includes('internalinternal') &&
+  !host.includes(`${RAILWAY_MYSQL_INTERNAL}${RAILWAY_MYSQL_INTERNAL}`);
 
 const rawMysqlUrl = process.env.DATABASE_URL || process.env.MYSQL_URL;
 const mysqlUrl = rawMysqlUrl ? normalizeMysqlUrl(rawMysqlUrl) : null;
@@ -44,10 +54,20 @@ const mysqlUser = process.env.MYSQL_USER || process.env.MYSQLUSER;
 const mysqlPassword = process.env.MYSQL_PASSWORD || process.env.MYSQLPASSWORD;
 
 const hasMysqlUrl = Boolean(mysqlUrl);
-const hasMysqlHost =
-  Boolean(mysqlHost) && mysqlHost !== '127.0.0.1' && mysqlHost !== 'localhost';
+const hasMysqlHost = isValidMysqlHost(mysqlHost);
 
 const useMySQL = !explicitSqlite && (explicitMysql || hasMysqlUrl || hasMysqlHost);
+
+if (
+  !explicitSqlite &&
+  !useMySQL &&
+  (rawMysqlUrl || mysqlHost) &&
+  (process.env.MYSQLHOST || process.env.MYSQL_HOST || process.env.DATABASE_URL)
+) {
+  console.warn(
+    '⚠️ MySQL env vars look invalid (check MYSQL_HOST is only ${{MySQL.MYSQLHOST}}). Using SQLite.'
+  );
+}
 
 let sequelize;
 
