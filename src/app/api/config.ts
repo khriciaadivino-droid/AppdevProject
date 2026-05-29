@@ -2,7 +2,7 @@ import { NativeModules, Platform } from 'react-native';
 
 // Option A: point this at your Railway *Node API* service URL (not the PawStuff landing site).
 // After deploying `node server.js` on Railway, paste the new service URL here.
-const REMOTE_BASE_URL = 'https://observant-imagination-staging-336e.up.railway.app';
+const REMOTE_BASE_URL = 'https://appdevproject-staging.up.railway.app';
 const ENABLE_LOCAL_API_FALLBACKS = false;
 const LOCAL_API_PORTS = [9000, 8000] as const;
 
