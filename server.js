@@ -44,26 +44,24 @@ const mountRoute = routeFile => {
 ['authRoutes.js', 'pushRoutes.js', 'petRoutes.js', 'orderRoutes.js', 'categoryRoutes.js', 'productRoutes.js', 'stockRoutes.js']
   .forEach(mountRoute);
 
-const PORT = process.env.PORT || 9000;
+const PORT = Number(process.env.PORT) || 9000;
 
-const startServer = async () => {
+const server = http.createServer(app);
+initWebSocket(server);
+
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`🟢 Server listening on http://0.0.0.0:${PORT}`);
+  console.log(`🟢 WebSocket at ws://0.0.0.0:${PORT}/ws`);
+});
+
+const connectDatabase = async () => {
   try {
     await sequelize.authenticate();
     await sequelize.sync();
     console.log(`🟢 Database connected (${process.env.USE_MYSQL === 'true' ? 'MySQL' : 'SQLite'})`);
-
-    const server = http.createServer(app);
-    initWebSocket(server);
-
-    server.listen(PORT, '0.0.0.0', () => {
-      console.log(`🟢 Server running on http://0.0.0.0:${PORT}`);
-      console.log(`🟢 WebSocket available at ws://0.0.0.0:${PORT}/ws`);
-      console.log(`🟢 Access from other devices at: http://192.168.254.107:${PORT}`);
-    });
   } catch (error) {
-    console.error('MySQL connection error:', error);
-    process.exit(1);
+    console.error('Database connection error:', error.message);
   }
 };
 
-startServer();
+connectDatabase();
