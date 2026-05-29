@@ -13,7 +13,7 @@ RUN npm ci --omit=dev \
   && npm rebuild sqlite3 --build-from-source
 
 COPY server.js websocket.js db.js User.js DeviceToken.js authRoutes.js pushRoutes.js ./
-COPY petRoutes.js orderRoutes.js Pet.js Order.js ./
+COPY petRoutes.js Pet.js ./
 
 ENV NODE_ENV=production
 

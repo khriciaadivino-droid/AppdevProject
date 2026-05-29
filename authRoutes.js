@@ -6,18 +6,31 @@ const { broadcast } = require('./websocket');
 
 const User = require('./User');
 
-// Initialize Firebase Admin (if not already initialized)
-// DEBUG: Check if FIREBASE_SERVICE_ACCOUNT_KEY is loaded
-console.log('DEBUG ENV KEY:', process.env.FIREBASE_SERVICE_ACCOUNT_KEY ? 'Loaded' : 'Missing');
-if (!admin.apps.length && process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
+const parseFirebaseServiceAccount = () => {
+  const raw = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+  if (!raw) return null;
   try {
-    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
-    });
-    console.log('✅ Firebase Admin initialized');
-  } catch (error) {
-    console.log('⚠️ Firebase Admin not initialized - Google login verification will be limited');
+    return JSON.parse(raw);
+  } catch {
+    try {
+      return JSON.parse(Buffer.from(raw, 'base64').toString('utf8'));
+    } catch {
+      return null;
+    }
+  }
+};
+
+if (!admin.apps.length) {
+  const serviceAccount = parseFirebaseServiceAccount();
+  if (serviceAccount) {
+    try {
+      admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
+      console.log('✅ Firebase Admin initialized');
+    } catch (error) {
+      console.log('⚠️ Firebase Admin init failed:', error.message);
+    }
+  } else if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
+    console.log('⚠️ FIREBASE_SERVICE_ACCOUNT_KEY is set but is not valid JSON (or base64 JSON)');
   }
 }
 

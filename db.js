@@ -1,26 +1,43 @@
 const { Sequelize } = require('sequelize');
 
-// Default to SQLite for development (no setup needed)
-// Set USE_MYSQL=true in .env to use MySQL instead
+// Set USE_MYSQL=true on Railway and link the MySQL plugin (or set MYSQL_* / DATABASE_URL).
 const useMySQL = process.env.USE_MYSQL === 'true';
 
-const sequelize = useMySQL
-    ? new Sequelize(
-        process.env.MYSQL_DATABASE || 'khringproj',
-        process.env.MYSQL_USER || 'khringproj_user',
-        process.env.MYSQL_PASSWORD || 'khringproj_password',
-        {
-            host: process.env.MYSQL_HOST || '127.0.0.1',
-            port: Number(process.env.MYSQL_PORT || 3306),
-            dialect: 'mysql',
-            logging: false,
-        }
-    )
-    : new Sequelize({
-        dialect: 'sqlite',
-        storage: './divino.db',
-        logging: false,
-    });
+const mysqlUrl = process.env.DATABASE_URL || process.env.MYSQL_URL;
+
+const mysqlHost =
+  process.env.MYSQL_HOST || process.env.MYSQLHOST || process.env.MYSQL_HOSTNAME;
+const mysqlPort = Number(
+  process.env.MYSQL_PORT || process.env.MYSQLPORT || process.env.MYSQL_PORT_NUMBER || 3306
+);
+const mysqlDatabase =
+  process.env.MYSQL_DATABASE || process.env.MYSQLDATABASE || process.env.MYSQL_DATABASE_NAME;
+const mysqlUser = process.env.MYSQL_USER || process.env.MYSQLUSER;
+const mysqlPassword = process.env.MYSQL_PASSWORD || process.env.MYSQLPASSWORD;
+
+let sequelize;
+
+if (useMySQL && mysqlUrl) {
+  sequelize = new Sequelize(mysqlUrl, { dialect: 'mysql', logging: false });
+} else if (useMySQL) {
+  if (!mysqlHost || mysqlHost === '127.0.0.1' || mysqlHost === 'localhost') {
+    console.warn(
+      '⚠️ USE_MYSQL=true but MYSQL_HOST is missing or localhost. On Railway, add reference variables from your MySQL service (e.g. MYSQLHOST → MYSQL_HOST).'
+    );
+  }
+  sequelize = new Sequelize(mysqlDatabase || 'railway', mysqlUser || 'root', mysqlPassword || '', {
+    host: mysqlHost || '127.0.0.1',
+    port: mysqlPort,
+    dialect: 'mysql',
+    logging: false,
+  });
+} else {
+  sequelize = new Sequelize({
+    dialect: 'sqlite',
+    storage: process.env.SQLITE_STORAGE || './divino.db',
+    logging: false,
+  });
+}
 
 console.log(`🗄️  Using ${useMySQL ? 'MySQL' : 'SQLite'} database`);
 

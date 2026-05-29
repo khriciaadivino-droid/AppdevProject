@@ -8,17 +8,28 @@ const router = express.Router();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'change-this-secret-in-production';
 
+const parseFirebaseServiceAccount = () => {
+  const raw = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    try {
+      return JSON.parse(Buffer.from(raw, 'base64').toString('utf8'));
+    } catch {
+      return null;
+    }
+  }
+};
+
 const ensureFirebaseAdmin = () => {
   if (admin.apps.length) return true;
-  if (!process.env.FIREBASE_SERVICE_ACCOUNT_KEY) return false;
-
+  const serviceAccount = parseFirebaseServiceAccount();
+  if (!serviceAccount) return false;
   try {
-    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
-    });
+    admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
     return true;
-  } catch (_err) {
+  } catch {
     return false;
   }
 };
