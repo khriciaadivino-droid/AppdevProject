@@ -79,6 +79,12 @@ const connectDatabase = async () => {
 
   try {
     await sequelize.authenticate();
+
+    if (process.env.DROP_DEVICE_TOKENS_TABLE === 'true') {
+      await sequelize.query('DROP TABLE IF EXISTS device_tokens');
+      console.log('✅ Dropped device_tokens (DROP_DEVICE_TOKENS_TABLE=true)');
+    }
+
     const syncOptions =
       process.env.SEQUELIZE_SYNC_ALTER === 'true' ? { alter: true } : {};
     await sequelize.sync(syncOptions);
