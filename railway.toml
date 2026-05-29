@@ -6,6 +6,7 @@ builder = "NIXPACKS"
 
 [deploy]
 startCommand = "node server.js"
+# Node API health (Symfony uses /health — do not mix services/repos)
 healthcheckPath = "/api/health"
 healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"

@@ -1,0 +1,13 @@
+node_modules
+android
+ios
+.git
+.env
+.env.*
+!.env.example
+*.jks
+*.keystore
+__tests__
+coverage
+.metro-health-check*
+uploads
