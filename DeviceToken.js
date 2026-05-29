@@ -15,7 +15,8 @@ const DeviceToken = sequelize.define(
       field: 'user_id',
     },
     token: {
-      type: DataTypes.TEXT,
+      // MySQL cannot index TEXT/BLOB; FCM tokens fit in VARCHAR(512).
+      type: DataTypes.STRING(512),
       allowNull: false,
       unique: true,
     },
@@ -40,10 +41,7 @@ const DeviceToken = sequelize.define(
     tableName: 'device_tokens',
     underscored: true,
     timestamps: false,
-    indexes: [
-      { fields: ['user_id'] },
-      { unique: true, fields: ['token'] },
-    ],
+    indexes: [{ fields: ['user_id'] }],
   }
 );
 

@@ -77,10 +77,18 @@ server.listen(PORT, '0.0.0.0', () => {
 const connectDatabase = async () => {
   try {
     await sequelize.authenticate();
-    await sequelize.sync();
-    console.log(`🟢 Database connected (${process.env.USE_MYSQL === 'true' ? 'MySQL' : 'SQLite'})`);
+    const syncOptions =
+      process.env.SEQUELIZE_SYNC_ALTER === 'true' ? { alter: true } : {};
+    await sequelize.sync(syncOptions);
+    const dialect = sequelize.getDialect();
+    console.log(`🟢 Database connected (${dialect})`);
   } catch (error) {
     console.error('Database connection error:', error.message);
+    if (error.message?.includes('BLOB/TEXT') && error.message?.includes('token')) {
+      console.error(
+        '💡 Drop the device_tokens table once in MySQL, then redeploy (schema was created with TEXT token).'
+      );
+    }
   }
 };
 
