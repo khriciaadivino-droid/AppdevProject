@@ -1,12 +1,12 @@
-# Railway deploys the Node/Express API (not the React Native Metro bundler).
-# Create a NEW service in Railway linked to this repo, then set env vars from .env.example.
+# Railway: Node/Express API only (Dockerfile). Do not use NIXPACKS on this RN monorepo.
+# Link the MySQL plugin and reference MYSQLHOST → MYSQL_HOST (see .env.example).
 
 [build]
-builder = "NIXPACKS"
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
 
 [deploy]
 startCommand = "node server.js"
-# Node API health (Symfony uses /health — do not mix services/repos)
 healthcheckPath = "/api/health"
-healthcheckTimeout = 300
+healthcheckTimeout = 120
 restartPolicyType = "ON_FAILURE"

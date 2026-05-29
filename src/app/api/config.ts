@@ -2,7 +2,13 @@ import { NativeModules, Platform } from 'react-native';
 
 // Option A: point this at your Railway *Node API* service URL (not the PawStuff landing site).
 // After deploying `node server.js` on Railway, paste the new service URL here.
-const REMOTE_BASE_URL = 'https://appdevproject-staging.up.railway.app';
+// Store release + Railway "observant-imagination" service (fix deploy via Dockerfile in railway.toml).
+const REMOTE_BASE_URL = 'https://observant-imagination-staging-336e.up.railway.app';
+/** Tried when the primary returns 502/503/504 or non-JSON. */
+const REMOTE_API_FALLBACK_URLS = [
+    'https://appdevproject-staging.up.railway.app',
+    'https://midterm-project-staging.up.railway.app',
+] as const;
 const ENABLE_LOCAL_API_FALLBACKS = false;
 const LOCAL_API_PORTS = [9000, 8000] as const;
 
@@ -29,11 +35,14 @@ const addLocalHostUrls = (urls: Set<string>, host: string): void => {
 };
 
 const addRemoteUrls = (urls: Set<string>): void => {
-    urls.add(REMOTE_BASE_URL);
+    const remotes = [REMOTE_BASE_URL, ...REMOTE_API_FALLBACK_URLS];
 
-    if (REMOTE_BASE_URL.startsWith('https://')) {
-        urls.add(REMOTE_BASE_URL.replace('https://', 'http://'));
-    }
+    remotes.forEach((remote) => {
+        urls.add(remote);
+        if (remote.startsWith('https://')) {
+            urls.add(remote.replace('https://', 'http://'));
+        }
+    });
 };
 
 export const getBaseUrls = (): string[] => {

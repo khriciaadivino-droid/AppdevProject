@@ -55,9 +55,20 @@ export const parseAPIError = (response: any, statusCode: number): ParsedError =>
             technicalError = response?.data?.message || 'Internal server error';
             break;
 
+        case 502:
+            userMessage =
+                'The server is not responding. If this continues, update the app or check that the API is running on Railway.';
+            technicalError = response?.data?.message || 'Bad gateway';
+            break;
+
         case 503:
             userMessage = 'Service is temporarily unavailable. Please try again later.';
             technicalError = 'Service unavailable';
+            break;
+
+        case 504:
+            userMessage = 'The server took too long to respond. Please try again.';
+            technicalError = 'Gateway timeout';
             break;
 
         default:

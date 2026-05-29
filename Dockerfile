@@ -15,6 +15,10 @@ RUN npm ci --omit=dev \
 COPY server.js websocket.js db.js User.js DeviceToken.js authRoutes.js pushRoutes.js ./
 COPY petRoutes.js Pet.js ./
 
+RUN mkdir -p /app/data
 ENV NODE_ENV=production
+ENV SQLITE_STORAGE=/app/data/divino.db
+
+EXPOSE 8080
 
 CMD ["node", "server.js"]

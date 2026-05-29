@@ -146,7 +146,12 @@ const readResponseData = async <T = any>(response: Response): Promise<T | undefi
     }
 };
 
-const isApiResponse = (response: Response): boolean => response.ok || hasJsonContentType(response);
+/** Gateway errors (e.g. Railway 502) return JSON but are not our API — try the next base URL. */
+const isRetryableGatewayStatus = (status: number): boolean =>
+    status === 502 || status === 503 || status === 504;
+
+const isApiResponse = (response: Response): boolean =>
+    (response.ok || hasJsonContentType(response)) && !isRetryableGatewayStatus(response.status);
 
 /**
  * Main HTTP client with fallback support

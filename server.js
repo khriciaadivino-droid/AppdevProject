@@ -12,8 +12,21 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+const healthPayload = () => ({
+  status: 'ok',
+  timestamp: new Date().toISOString(),
+});
+
 app.get('/api/health', (_req, res) => {
-  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.status(200).json(healthPayload());
+});
+
+app.get('/health', (_req, res) => {
+  res.status(200).json(healthPayload());
+});
+
+app.get('/', (_req, res) => {
+  res.status(200).json({ ...healthPayload(), service: 'divino-api' });
 });
 
 // Serve static files from uploads directory
@@ -34,6 +47,11 @@ const mountRoute = routeFile => {
     return;
   }
 
+  if (routeFile === 'orderRoutes.js' && !fs.existsSync(path.join(__dirname, 'Product.js'))) {
+    console.warn('⚠️ Skipping orderRoutes.js (Product.js not in deployment)');
+    return;
+  }
+
   try {
     app.use('/api', require(`./${routeFile}`));
   } catch (error) {
@@ -41,7 +59,9 @@ const mountRoute = routeFile => {
   }
 };
 
-['authRoutes.js', 'pushRoutes.js', 'petRoutes.js', 'orderRoutes.js', 'categoryRoutes.js', 'productRoutes.js', 'stockRoutes.js']
+fs.readdirSync(__dirname)
+  .filter(name => name.endsWith('Routes.js'))
+  .sort()
   .forEach(mountRoute);
 
 const PORT = Number(process.env.PORT) || 9000;
