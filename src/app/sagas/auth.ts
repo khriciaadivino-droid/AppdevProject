@@ -4,6 +4,8 @@ import { authGoogleLogin, authLogin, authRegister, authLogout } from '../api/aut
 import { formatErrorForRedux } from '../../utils/errorUtils';
 import { setError, setValidationError } from '../reducers/error';
 import { RootState } from '../reducers';
+import { globalPersistor } from '../reducers';
+import { registerDeviceForPush } from '../notifications/push';
 
 import {
     USER_LOGIN,
@@ -64,6 +66,9 @@ export function* userLoginAsync(action: AuthAction): SagaIterator {
                     loginTime: new Date().toISOString(),
                 }
             });
+            if (token) {
+                yield call(registerDeviceForPush, token);
+            }
             yield put(setError(null));
         } else {
             const message = response?.data?.message || 'Login failed. Please try again.';
@@ -79,6 +84,7 @@ export function* userLoginAsync(action: AuthAction): SagaIterator {
                 userMessage: message,
                 message: message,
                 fieldErrors: response?.data?.errors || {},
+                actionType: USER_LOGIN,
             }));
         }
 
@@ -88,7 +94,10 @@ export function* userLoginAsync(action: AuthAction): SagaIterator {
         const message = errorPayload.message || 'Login failed. Please try again.';
 
         yield put({ type: USER_LOGIN_ERROR, payload: message });
-        yield put(setError(errorPayload));
+        yield put(setError({
+            ...errorPayload,
+            actionType: USER_LOGIN,
+        }));
     }
 }
 
@@ -130,6 +139,7 @@ export function* userGoogleLoginAsync(action: AuthAction): SagaIterator {
                 userMessage: message,
                 message,
                 fieldErrors: response?.data?.errors || {},
+                actionType: USER_GOOGLE_LOGIN,
             }));
         }
     } catch (error: any) {
@@ -137,7 +147,10 @@ export function* userGoogleLoginAsync(action: AuthAction): SagaIterator {
         const message = errorPayload.message || 'Google Sign-In failed. Please try again.';
 
         yield put({ type: USER_LOGIN_ERROR, payload: message });
-        yield put(setError(errorPayload));
+        yield put(setError({
+            ...errorPayload,
+            actionType: USER_GOOGLE_LOGIN,
+        }));
     }
 }
 
@@ -193,6 +206,7 @@ export function* userRegisterAsync(action: AuthAction): SagaIterator {
                 userMessage: message,
                 message: message,
                 fieldErrors: response?.data?.errors || {},
+                actionType: USER_REGISTER,
             }));
         }
 
@@ -203,7 +217,10 @@ export function* userRegisterAsync(action: AuthAction): SagaIterator {
         console.error('❌ Error message to dispatch:', message);
 
         yield put({ type: USER_REGISTER_ERROR, payload: message });
-        yield put(setError(errorPayload));
+        yield put(setError({
+            ...errorPayload,
+            actionType: USER_REGISTER,
+        }));
     }
 }
 
@@ -247,6 +264,16 @@ export function* userLogoutAsync(): SagaIterator {
             yield put({
                 type: USER_LOGOUT_COMPLETED,
             });
+                // Ensure persisted storage is cleared so user cannot be rehydrated after logout
+                try {
+                    if (globalPersistor) {
+                        // call purge() which returns a Promise
+                        yield call([globalPersistor, globalPersistor.purge]);
+                        console.log('🔁 Persistor purge completed');
+                    }
+                } catch (purgeErr: any) {
+                    console.warn('⚠️ Persistor purge failed:', purgeErr);
+                }
             yield put(setError(null));
         } else {
             const message = response?.data?.message || 'Logout failed. Please try again.';
@@ -258,6 +285,7 @@ export function* userLogoutAsync(): SagaIterator {
                 userMessage: message,
                 message: message,
                 fieldErrors: {},
+                actionType: USER_LOGOUT,
             }));
         }
 
@@ -267,7 +295,10 @@ export function* userLogoutAsync(): SagaIterator {
         const message = errorPayload.message || 'Logout failed. Please try again.';
 
         yield put({ type: USER_LOGOUT_ERROR, payload: message });
-        yield put(setError(errorPayload));
+        yield put(setError({
+            ...errorPayload,
+            actionType: USER_LOGOUT,
+        }));
     }
 }
 

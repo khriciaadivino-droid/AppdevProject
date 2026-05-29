@@ -12,6 +12,10 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+app.get('/api/health', (_req, res) => {
+  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
 // Serve static files from uploads directory
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
@@ -37,7 +41,7 @@ const mountRoute = routeFile => {
   }
 };
 
-['authRoutes.js', 'petRoutes.js', 'orderRoutes.js', 'categoryRoutes.js', 'productRoutes.js', 'stockRoutes.js']
+['authRoutes.js', 'pushRoutes.js', 'petRoutes.js', 'orderRoutes.js', 'categoryRoutes.js', 'productRoutes.js', 'stockRoutes.js']
   .forEach(mountRoute);
 
 const PORT = process.env.PORT || 9000;

@@ -20,3 +20,14 @@ buildscript {
 }
 
 apply plugin: "com.facebook.react.rootproject"
+
+allprojects {
+    configurations.all {
+        resolutionStrategy {
+            force "com.google.android.gms:play-services-auth:21.4.0"
+            force "com.google.android.gms:play-services-auth-base:18.0.9"
+            force "com.google.android.gms:play-services-auth-api-phone:18.0.2"
+            force "androidx.credentials:credentials-play-services-auth:1.2.0"
+        }
+    }
+}

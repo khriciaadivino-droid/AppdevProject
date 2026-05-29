@@ -63,7 +63,7 @@ export default function errorReducer(state: ErrorState = initialState, action: E
 
         case 'UNAUTHORIZED_ERROR':
             return {
-                ...state,
+                ...initialState,
                 statusCode: 401,
                 message: 'Session expired. Please login again.',
                 userMessage: 'Your session has expired. Please log in again.',

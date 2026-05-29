@@ -2,7 +2,7 @@ import { NativeModules, Platform } from 'react-native';
 
 const REMOTE_BASE_URL = 'https://observant-imagination-staging-336e.up.railway.app';
 const ENABLE_LOCAL_API_FALLBACKS = false;
-const LOCAL_API_PORTS = [8000] as const;
+const LOCAL_API_PORTS = [9000, 8000] as const;
 
 const getMetroHost = (): string | null => {
     const scriptURL = NativeModules?.SourceCode?.scriptURL;
@@ -26,15 +26,23 @@ const addLocalHostUrls = (urls: Set<string>, host: string): void => {
     });
 };
 
-export const getBaseUrls = (): string[] => {
-    if (!ENABLE_LOCAL_API_FALLBACKS) {
-        return [REMOTE_BASE_URL];
-    }
+const addRemoteUrls = (urls: Set<string>): void => {
+    urls.add(REMOTE_BASE_URL);
 
+    if (REMOTE_BASE_URL.startsWith('https://')) {
+        urls.add(REMOTE_BASE_URL.replace('https://', 'http://'));
+    }
+};
+
+export const getBaseUrls = (): string[] => {
     const urls = new Set<string>();
     const metroHost = getMetroHost();
 
-    urls.add(REMOTE_BASE_URL);
+    addRemoteUrls(urls);
+
+    if (!ENABLE_LOCAL_API_FALLBACKS) {
+        return Array.from(urls);
+    }
 
     if (metroHost) {
         addLocalHostUrls(urls, metroHost);
@@ -55,15 +63,15 @@ export const API_BASE_URL = getBaseUrls()[0] ?? REMOTE_BASE_URL;
 
 export const API_CONFIG = {
     BASE_URLS: getBaseUrls(),
-    TIMEOUT: 15000,
-    FALLBACK_TIMEOUT: 4000,
+    TIMEOUT: 30000, // Increased to 30 seconds for slow Railway cold starts
+    FALLBACK_TIMEOUT: 15000, // Increased fallback timeout
     DEBUG: true,
     ENDPOINTS: {
-        LOGIN: '/api/login',
-        REGISTER: '/api/register',
-        LOGOUT: '/api/logout',
-        VERIFY: '/api/verify',
-        GOOGLE_LOGIN: '/api/google-login',
+        LOGIN: '/api/auth/login',
+        REGISTER: '/api/auth/register',
+        LOGOUT: '/api/auth/logout',
+        VERIFY: '/api/auth/verify',
+        GOOGLE_LOGIN: '/api/auth/google-login',
         VERIFY_EMAIL: '/api/verify-email',
         FORGOT_PASSWORD: null,
         RESET_PASSWORD: null,

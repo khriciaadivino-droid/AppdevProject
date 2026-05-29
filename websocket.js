@@ -1,62 +1,46 @@
-/**
- * WebSocket Server Module
- * Attach to the existing HTTP server so WS and REST share the same port.
- * Clients connect to  ws://<host>:<port>/ws
+/*
+ * Socket.IO Server Module
+ * Replaces the previous 'ws' based implementation with Socket.IO.
+ * Attaches to the existing HTTP server so WS and REST share the same port.
+ * Clients connect to  ws(s)://<host>:<port>/ws (Socket.IO path)
  */
 
-const { WebSocketServer } = require('ws');
+const { Server } = require('socket.io');
 
-let wss = null;
+let io = null;
 
 /**
- * Initialise the WebSocket server on an existing http.Server instance.
+ * Initialise the Socket.IO server on an existing http.Server instance.
  * Call this once, right after creating the HTTP server.
  * @param {import('http').Server} server
  */
 const initWebSocket = (server) => {
-    wss = new WebSocketServer({ server, path: '/ws' });
+    io = new Server(server, {
+        path: '/ws',
+        cors: { origin: '*' },
+    });
 
-    // ── Connection handler ────────────────────────────────────────────────
-    wss.on('connection', (ws) => {
-        console.log(`🟢 [WS] Client connected  (total: ${wss.clients.size})`);
+    io.on('connection', (socket) => {
+        console.log(`🟢 [WS] Client connected (id=${socket.id})`);
 
-        ws.isAlive = true;
-        ws.on('pong', () => { ws.isAlive = true; });
+        // Acknowledge connection with a standard message event
+        socket.emit('message', { type: 'connected', message: 'Socket.IO connected' });
 
-        // Send an immediate acknowledgement so the client knows the socket is ready
-        ws.send(JSON.stringify({ type: 'connected', message: 'WebSocket connected' }));
-
-        ws.on('close', () => {
-            console.log(`🟡 [WS] Client disconnected (remaining: ${wss.clients.size - 1})`);
+        socket.on('disconnect', (reason) => {
+            console.log(`🟡 [WS] Client disconnected (id=${socket.id}) reason=${reason}`);
         });
 
-        ws.on('error', (err) => {
-            console.error('🔴 [WS] Client error:', err.message);
+        socket.on('error', (err) => {
+            console.error('🔴 [WS] Client error:', err && err.message ? err.message : err);
         });
     });
 
-    // ── Heartbeat (detect stale connections) ─────────────────────────────
-    const heartbeatInterval = setInterval(() => {
-        wss.clients.forEach((ws) => {
-            if (!ws.isAlive) {
-                ws.terminate();
-                return;
-            }
-            ws.isAlive = false;
-            ws.ping();
-        });
-    }, 30_000);
-
-    wss.on('close', () => {
-        clearInterval(heartbeatInterval);
+    io.on('error', (err) => {
+        console.error('🔴 [WS] Server error:', err && err.message ? err.message : err);
     });
 
-    wss.on('error', (err) => {
-        console.error('🔴 [WS] Server error:', err.message);
-    });
-
-    console.log('🟢 [WS] WebSocket server ready on path /ws');
-    return wss;
+    console.log('🟢 [WS] Socket.IO server ready on path /ws');
+    return io;
 };
 
 /**
@@ -64,19 +48,9 @@ const initWebSocket = (server) => {
  * @param {{ type: string, data?: object }} event
  */
 const broadcast = (event) => {
-    if (!wss) return;
-
-    const message = JSON.stringify(event);
-    let sent = 0;
-
-    wss.clients.forEach((client) => {
-        if (client.readyState === 1 /* WebSocket.OPEN */) {
-            client.send(message);
-            sent++;
-        }
-    });
-
-    console.log(`📡 [WS] Broadcast "${event.type}" to ${sent} client(s)`);
+    if (!io) return;
+    io.emit('message', event);
+    console.log(`📡 [WS] Broadcast "${event.type}" to all clients`);
 };
 
 module.exports = { initWebSocket, broadcast };

@@ -82,6 +82,58 @@ const hasJsonContentType = (response: Response): boolean => {
     return contentType.includes('application/json') || contentType.includes('+json');
 };
 
+const normalizeHeaders = (headers?: any): Record<string, string> => {
+    if (!headers) return {};
+    if (headers instanceof Headers) {
+        const result: Record<string, string> = {};
+        headers.forEach((value, key) => {
+            result[key] = value;
+        });
+        return result;
+    }
+    if (Array.isArray(headers)) {
+        return headers.reduce<Record<string, string>>((acc, [key, value]) => {
+            acc[key] = value;
+            return acc;
+        }, {});
+    }
+    return { ...headers } as Record<string, string>;
+};
+
+const redactHeaders = (headers: Record<string, string>): Record<string, string> => {
+    const redacted = { ...headers };
+    Object.keys(redacted).forEach((key) => {
+        if (key.toLowerCase() === 'authorization') {
+            redacted[key] = 'Bearer ***';
+        }
+    });
+    return redacted;
+};
+
+const redactBody = (body?: any): string | undefined => {
+    if (!body || typeof body !== 'string') {
+        return typeof body === 'string' ? body : undefined;
+    }
+
+    try {
+        const parsed = JSON.parse(body);
+        if (parsed && typeof parsed === 'object') {
+            if ('password' in parsed) {
+                parsed.password = '***';
+            }
+            if ('token' in parsed) {
+                parsed.token = '***';
+            }
+            if ('firebaseToken' in parsed) {
+                parsed.firebaseToken = '***';
+            }
+        }
+        return JSON.stringify(parsed);
+    } catch {
+        return body;
+    }
+};
+
 const readResponseData = async <T = any>(response: Response): Promise<T | undefined> => {
     if (!hasJsonContentType(response)) {
         return undefined;
@@ -117,7 +169,14 @@ export const apiClient = async <T = any>(
                 : API_CONFIG.FALLBACK_TIMEOUT;
 
             if (API_CONFIG.DEBUG) {
+                const requestHeaders = redactHeaders(normalizeHeaders(options.headers));
+                const requestBody = redactBody(options.body);
                 console.log(`📡 [API] Trying: ${fullUrl} (${timeoutMs}ms timeout)`);
+                console.log('📡 [API] Request:', {
+                    method: options.method ?? 'GET',
+                    headers: requestHeaders,
+                    body: requestBody,
+                });
             }
 
             const response = await fetchWithTimeout(fullUrl, options, timeoutMs);

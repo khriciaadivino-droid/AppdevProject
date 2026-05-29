@@ -7,6 +7,8 @@ const { broadcast } = require('./websocket');
 const User = require('./User');
 
 // Initialize Firebase Admin (if not already initialized)
+// DEBUG: Check if FIREBASE_SERVICE_ACCOUNT_KEY is loaded
+console.log('DEBUG ENV KEY:', process.env.FIREBASE_SERVICE_ACCOUNT_KEY ? 'Loaded' : 'Missing');
 if (!admin.apps.length && process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
   try {
     const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
@@ -164,30 +166,38 @@ router.post('/auth/login', async (req, res) => {
   }
 });
 
-// Google Sign-In endpoint
+// Google Sign-In endpoint (verifies Google ID token)
+const { OAuth2Client } = require('google-auth-library');
+
+// Use the same web client ID as the frontend for Google token verification
+const GOOGLE_CLIENT_ID = '189109871383-06n3v0a3hamnd8rkk71u3tke1uen6r95.apps.googleusercontent.com';
+const client = new OAuth2Client(GOOGLE_CLIENT_ID);
+
 router.post('/auth/google-login', async (req, res) => {
   try {
-    const { firebaseToken, email, name, photoURL, googleId } = req.body || {};
+    console.log('🟡 /auth/google-login request body:', req.body);
+    const { idToken, email, name, photoURL, googleId } = req.body || {};
 
-    if (!email || !googleId) {
-      return res.status(400).json({
-        success: false,
-        message: 'Email and googleId are required.',
+    if (!idToken) {
+      console.log('🔴 No idToken provided');
+      return res.status(400).json({ success: false, message: 'idToken is required.' });
+    }
+
+    // Verify Google ID token
+    let payload;
+    try {
+      const ticket = await client.verifyIdToken({
+        idToken,
+        audience: GOOGLE_CLIENT_ID,
       });
+      payload = ticket.getPayload();
+      console.log('🟢 Google ID token verified. Payload:', payload);
+    } catch (err) {
+      console.log('🔴 Google ID token verification failed:', err.message);
+      return res.status(401).json({ success: false, message: 'Invalid Google ID token.' });
     }
 
-    // Verify Firebase token if admin is initialized
-    if (admin.apps.length > 0 && firebaseToken) {
-      try {
-        const decodedToken = await admin.auth().verifyIdToken(firebaseToken);
-        console.log('✅ Firebase token verified:', decodedToken.email);
-      } catch (error) {
-        console.log('⚠️ Firebase token verification failed:', error.message);
-        // Continue anyway - token is valid from frontend
-      }
-    }
-
-    const normalizedEmail = String(email).trim().toLowerCase();
+    const normalizedEmail = String(payload.email).trim().toLowerCase();
 
     // Check if user exists
     let user = await User.findOne({ where: { email: normalizedEmail } });

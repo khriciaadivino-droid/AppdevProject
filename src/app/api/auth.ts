@@ -73,6 +73,52 @@ export interface GoogleAuthConfigResponse {
     };
 }
 
+interface ApiResponseLike {
+    ok: boolean;
+    status: number;
+    data?: any;
+}
+
+const shouldTryNextEndpoint = (response: ApiResponseLike): boolean => {
+    return !response.ok && (response.status === 404 || response.status === 405);
+};
+
+const toAuthResponse = (response: ApiResponseLike): ApiAuthResponse => ({
+    ok: response.ok,
+    status: response.status,
+    data: response.data,
+});
+
+const postWithFallback = async (
+    endpoints: string[],
+    body: any,
+    token?: string
+): Promise<ApiAuthResponse> => {
+    let lastResponse: ApiResponseLike | null = null;
+
+    for (const endpoint of endpoints) {
+        const response = await apiPost(endpoint, body, token);
+        lastResponse = response;
+
+        if (!shouldTryNextEndpoint(response)) {
+            return toAuthResponse(response);
+        }
+    }
+
+    if (lastResponse) {
+        return toAuthResponse(lastResponse);
+    }
+
+    return {
+        ok: false,
+        status: 500,
+        data: {
+            message: 'Request failed. Please try again.',
+            errors: {},
+        },
+    };
+};
+
 /**
  * Login user - Returns response in format saga expects
  */
@@ -80,19 +126,22 @@ export async function authLogin(credentials: LoginCredentials): Promise<ApiAuthR
     console.log('🔐 [Auth] Login attempt:', credentials.email);
 
     try {
-        const response = await apiPost(API_CONFIG.ENDPOINTS.LOGIN, {
-            email: credentials.email,
-            password: credentials.password,
-        });
+        const response = await postWithFallback(
+            [
+                API_CONFIG.ENDPOINTS.LOGIN,
+                '/api/login',
+                '/login',
+                '/auth/login',
+            ],
+            {
+                email: credentials.email,
+                password: credentials.password,
+            }
+        );
 
         console.log('🔐 [Auth] Raw response:', response);
 
-        // Return response in format saga expects
-        return {
-            ok: response.ok,
-            status: response.status,
-            data: response.data,
-        };
+        return response;
     } catch (error: any) {
         console.error('❌ [Auth] Login error:', error.message);
         return {
@@ -131,15 +180,19 @@ export async function getGoogleAuthConfig(): Promise<GoogleAuthConfigResponse> {
 
 export async function authGoogleLogin(credentials: GoogleLoginCredentials): Promise<ApiAuthResponse> {
     try {
-        const response = await apiPost(API_CONFIG.ENDPOINTS.GOOGLE_LOGIN, {
-            firebaseToken: credentials.idToken,
-        });
+        const response = await postWithFallback(
+            [
+                API_CONFIG.ENDPOINTS.GOOGLE_LOGIN,
+                '/api/google-login',
+                '/google-login',
+                '/auth/google-login',
+            ],
+            {
+                idToken: credentials.idToken,
+            }
+        );
 
-        return {
-            ok: response.ok,
-            status: response.status,
-            data: response.data,
-        };
+        return response;
     } catch (error: any) {
         return {
             ok: false,
@@ -170,20 +223,24 @@ export async function authRegister(
                 .trim()
             || credentials.email.split('@')[0];
 
-        const response = await apiPost(API_CONFIG.ENDPOINTS.REGISTER, {
-            username,
-            name: username,
-            email: credentials.email,
-            password: credentials.password,
-        });
+        const response = await postWithFallback(
+            [
+                API_CONFIG.ENDPOINTS.REGISTER,
+                '/api/register',
+                '/register',
+                '/auth/register',
+            ],
+            {
+                username,
+                name: username,
+                email: credentials.email,
+                password: credentials.password,
+            }
+        );
 
         console.log('📝 [Auth] Raw response:', response);
 
-        return {
-            ok: response.ok,
-            status: response.status,
-            data: response.data,
-        };
+        return response;
     } catch (error: any) {
         console.error('❌ [Auth] Registration error:', error.message);
         return {
@@ -291,15 +348,20 @@ export async function authLogout(token?: string): Promise<ApiAuthResponse> {
     console.log('🔓 [Auth] Logout attempt');
 
     try {
-        const response = await apiPost('/api/logout', {}, token);
+        const response = await postWithFallback(
+            [
+                API_CONFIG.ENDPOINTS.LOGOUT,
+                '/api/logout',
+                '/logout',
+                '/auth/logout',
+            ],
+            {},
+            token
+        );
 
         console.log('🔓 [Auth] Raw response:', response);
 
-        return {
-            ok: response.ok,
-            status: response.status,
-            data: response.data,
-        };
+        return response;
     } catch (error: any) {
         console.error('❌ [Auth] Logout error:', error.message);
         return {

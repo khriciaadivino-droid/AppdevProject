@@ -44,9 +44,13 @@ const persistConfig = {
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);
 
+export let globalPersistor: Persistor | null = null;
+
 export default (): StoreSetup => {
     const store = createStore<RootState>(persistedReducer, applyMiddleware(sagaMiddleware));
     const persistor = persistStore(store);
+    // expose persistor for sagas or other app modules to perform purge/flush
+    globalPersistor = persistor;
     const runSaga = sagaMiddleware.run;
     return { store, persistor, runSaga };
 };

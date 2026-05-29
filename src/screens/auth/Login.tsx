@@ -54,29 +54,30 @@ const Login: FC<LoginScreenProps> = ({ navigation }) => {
     useEffect(() => {
         let isMounted = true;
 
-        const configureGoogleSignIn = async (): Promise<void> => {
-            const response = await getGoogleAuthConfig();
 
+        const configureGoogleSignIn = async (): Promise<void> => {
             if (!isMounted) {
                 return;
             }
 
-            const clientId = response.data?.clientId?.trim();
+            try {
 
-            if (!response.ok || !response.data?.enabled || !clientId) {
+                GoogleSignin.configure({
+                    webClientId: '189109871383-06n3v0a3hamnd8rkk71u3tke1uen6r95.apps.googleusercontent.com', // Unified web client ID
+                    scopes: ['email', 'profile'],
+                    offlineAccess: true,
+                });
+
+                setIsGoogleEnabled(true);
+                setGoogleHelperText(null);
+
+                console.log('✅ Google Sign-In configured successfully');
+            } catch (error) {
+                console.log('❌ Google Sign-In configuration error:', error);
+
                 setIsGoogleEnabled(false);
-                setGoogleHelperText(response.data?.message || null);
-                return;
+                setGoogleHelperText('Google Sign-In configuration failed.');
             }
-
-            GoogleSignin.configure({
-                webClientId: clientId,
-                scopes: ['email', 'profile'],
-                offlineAccess: false,
-            });
-
-            setIsGoogleEnabled(true);
-            setGoogleHelperText(null);
         };
 
         configureGoogleSignIn();

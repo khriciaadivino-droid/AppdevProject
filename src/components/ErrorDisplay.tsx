@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { RootState } from '../app/reducers';
 import { clearError } from '../app/reducers/error';
+import { USER_GOOGLE_LOGIN, USER_LOGIN, USER_REGISTER } from '../app/actions';
 
 interface ErrorDisplayProps {
     visible?: boolean;
@@ -67,6 +68,12 @@ const ErrorDisplay: FC<ErrorDisplayProps> = ({ visible, onDismiss }) => {
     };
 
     const getErrorTitle = (statusCode: number | undefined): string => {
+        const actionType = error?.actionType;
+        const isLoginAction = actionType === USER_LOGIN || actionType === USER_GOOGLE_LOGIN;
+        const isRegisterAction = actionType === USER_REGISTER;
+
+        if (statusCode === 401 && isLoginAction) return 'Login Failed';
+        if (statusCode === 401 && isRegisterAction) return 'Registration Failed';
         if (statusCode === 401) return 'Session Expired';
         if (statusCode === 403) return 'Access Denied';
         if (statusCode === 422) return 'Validation Error';
