@@ -6,16 +6,22 @@ const explicitMysql = process.env.USE_MYSQL === 'true';
 const explicitSqlite = process.env.USE_MYSQL === 'false';
 
 const RAILWAY_MYSQL_INTERNAL = 'mysql.railway.internal';
+const DOUBLED_INTERNAL = RAILWAY_MYSQL_INTERNAL + RAILWAY_MYSQL_INTERNAL;
 
 /** Fixes duplicated host values from mis-pasted Railway reference vars. */
 const normalizeMysqlHost = (host) => {
   if (!host) return host;
-  const trimmed = String(host).trim();
-  if (!trimmed.includes(RAILWAY_MYSQL_INTERNAL)) return trimmed;
-  return trimmed.replace(
-    new RegExp(`(${RAILWAY_MYSQL_INTERNAL.replace(/\./g, '\\.')})+`, 'g'),
-    RAILWAY_MYSQL_INTERNAL
-  );
+  let h = String(host).trim();
+  while (h.includes(DOUBLED_INTERNAL)) {
+    h = h.split(DOUBLED_INTERNAL).join(RAILWAY_MYSQL_INTERNAL);
+  }
+  if (h.length > RAILWAY_MYSQL_INTERNAL.length && h.startsWith(RAILWAY_MYSQL_INTERNAL)) {
+    const rest = h.slice(RAILWAY_MYSQL_INTERNAL.length);
+    if (rest === RAILWAY_MYSQL_INTERNAL || rest.startsWith(RAILWAY_MYSQL_INTERNAL)) {
+      h = RAILWAY_MYSQL_INTERNAL;
+    }
+  }
+  return h;
 };
 
 const normalizeMysqlUrl = (url) => {
@@ -25,19 +31,26 @@ const normalizeMysqlUrl = (url) => {
     parsed.hostname = normalizeMysqlHost(parsed.hostname);
     return parsed.toString();
   } catch {
-    return url.replace(
-      /mysql\.railway\.internal(?:mysql\.railway\.internal)+/g,
-      RAILWAY_MYSQL_INTERNAL
-    );
+    return String(url).split(DOUBLED_INTERNAL).join(RAILWAY_MYSQL_INTERNAL);
   }
 };
 
-const isValidMysqlHost = (host) =>
-  Boolean(host) &&
-  host !== '127.0.0.1' &&
-  host !== 'localhost' &&
-  !host.includes('internalinternal') &&
-  !host.includes(`${RAILWAY_MYSQL_INTERNAL}${RAILWAY_MYSQL_INTERNAL}`);
+const isValidMysqlHost = (host) => {
+  const normalized = normalizeMysqlHost(host);
+  if (!normalized || normalized === '127.0.0.1' || normalized === 'localhost') {
+    return false;
+  }
+  if (normalized.includes(DOUBLED_INTERNAL)) {
+    return false;
+  }
+  if (
+    normalized.includes(RAILWAY_MYSQL_INTERNAL) &&
+    normalized !== RAILWAY_MYSQL_INTERNAL
+  ) {
+    return false;
+  }
+  return true;
+};
 
 const rawMysqlUrl = process.env.DATABASE_URL || process.env.MYSQL_URL;
 const mysqlUrl = rawMysqlUrl ? normalizeMysqlUrl(rawMysqlUrl) : null;
@@ -53,39 +66,44 @@ const mysqlDatabase =
 const mysqlUser = process.env.MYSQL_USER || process.env.MYSQLUSER;
 const mysqlPassword = process.env.MYSQL_PASSWORD || process.env.MYSQLPASSWORD;
 
-const hasMysqlUrl = Boolean(mysqlUrl);
+const mysqlUrlHost = (() => {
+  if (!mysqlUrl) return null;
+  try {
+    return normalizeMysqlHost(new URL(mysqlUrl).hostname);
+  } catch {
+    return null;
+  }
+})();
+
+const hasMysqlUrl = Boolean(mysqlUrl) && isValidMysqlHost(mysqlUrlHost);
 const hasMysqlHost = isValidMysqlHost(mysqlHost);
 
-const useMySQL = !explicitSqlite && (explicitMysql || hasMysqlUrl || hasMysqlHost);
+let useMySQL = !explicitSqlite && (explicitMysql || hasMysqlUrl || hasMysqlHost);
 
 if (
   !explicitSqlite &&
   !useMySQL &&
   (rawMysqlUrl || mysqlHost) &&
-  (process.env.MYSQLHOST || process.env.MYSQL_HOST || process.env.DATABASE_URL)
+  String(rawMysqlUrl || mysqlHost).includes(RAILWAY_MYSQL_INTERNAL)
 ) {
   console.warn(
-    '⚠️ MySQL env vars look invalid (check MYSQL_HOST is only ${{MySQL.MYSQLHOST}}). Using SQLite.'
+    '⚠️ MySQL host/URL is misconfigured (duplicate mysql.railway.internal). Using SQLite. Set MYSQL_HOST to only ${{MySQL.MYSQLHOST}}.'
   );
 }
 
 let sequelize;
 
-if (useMySQL && mysqlUrl) {
+if (useMySQL && mysqlUrl && hasMysqlUrl) {
   sequelize = new Sequelize(mysqlUrl, { dialect: 'mysql', logging: false });
-} else if (useMySQL) {
-  if (!mysqlHost || mysqlHost === '127.0.0.1' || mysqlHost === 'localhost') {
-    console.warn(
-      '⚠️ USE_MYSQL=true but MYSQL_HOST is missing or localhost. On Railway, add reference variables from your MySQL service (e.g. MYSQLHOST → MYSQL_HOST).'
-    );
-  }
+} else if (useMySQL && hasMysqlHost) {
   sequelize = new Sequelize(mysqlDatabase || 'railway', mysqlUser || 'root', mysqlPassword || '', {
-    host: mysqlHost || '127.0.0.1',
+    host: mysqlHost,
     port: mysqlPort,
     dialect: 'mysql',
     logging: false,
   });
 } else {
+  useMySQL = false;
   const storage =
     process.env.SQLITE_STORAGE ||
     (process.env.RAILWAY_ENVIRONMENT ? '/app/data/divino.db' : './divino.db');
@@ -98,7 +116,8 @@ if (useMySQL && mysqlUrl) {
 
 console.log(
   `🗄️  Using ${useMySQL ? 'MySQL' : 'SQLite'} database` +
-    (useMySQL && mysqlHost ? ` (host: ${mysqlHost})` : '')
+    (useMySQL && mysqlHost ? ` (host: ${mysqlHost})` : '') +
+    (useMySQL && mysqlUrlHost && !mysqlHost ? ` (url host: ${mysqlUrlHost})` : '')
 );
 
 module.exports = sequelize;

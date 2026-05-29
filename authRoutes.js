@@ -9,15 +9,27 @@ const User = require('./User');
 const parseFirebaseServiceAccount = () => {
   const raw = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
   if (!raw) return null;
-  try {
-    return JSON.parse(raw);
-  } catch {
+
+  const candidates = [String(raw).trim().replace(/^\uFEFF/, '')];
+  if (candidates[0].startsWith("'") && candidates[0].endsWith("'")) {
+    candidates.push(candidates[0].slice(1, -1));
+  }
+  if (candidates[0].startsWith('"') && candidates[0].endsWith('"')) {
+    candidates.push(candidates[0].slice(1, -1));
+  }
+
+  for (const value of candidates) {
     try {
-      return JSON.parse(Buffer.from(raw, 'base64').toString('utf8'));
+      return JSON.parse(value);
     } catch {
-      return null;
+      try {
+        return JSON.parse(Buffer.from(value, 'base64').toString('utf8'));
+      } catch {
+        /* try next candidate */
+      }
     }
   }
+  return null;
 };
 
 if (!admin.apps.length) {
